@@ -1456,24 +1456,16 @@ function openWhatsApp(){
 async function fetchCNPJ(name){
   if(!name) return null;
   try{
-    const q = encodeURIComponent(name.replace(/[^a-zA-ZÀ-ú\s]/g,'').trim().split(' ').slice(0,3).join(' '));
-    // Busca via ReceitaWS (API pública gratuita)
-    const r = await fetch(`https://receitaws.com.br/v1/company/search?query=${q}`,{signal:AbortSignal.timeout(5000)});
+    // CNPJ via Edge Function (evita CORS)
+    const r = await fetch(`${SB_URL}/functions/v1/clever-handler`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
+      body:JSON.stringify({action:'cnpj',name})
+    });
     if(!r.ok) return null;
     const d = await r.json();
-    if(!d?.companies?.length) return null;
-    const cnpj = d.companies[0]?.cnpj?.replace(/[.\-\/]/g,'');
-    if(!cnpj) return null;
-    const r2 = await fetch(`https://receitaws.com.br/v1/company/${cnpj}`,{signal:AbortSignal.timeout(5000)});
-    if(!r2.ok) return null;
-    const det = await r2.json();
-    return {
-      cnpj: det.cnpj,
-      cnpj_status: det.situacao,
-      cnpj_porte: det.porte,
-      cnpj_abertura: det.abertura,
-      socios: (det.qsa||[]).map(s=>({nome:s.nome,qualificacao:s.qual})).slice(0,5),
-    };
+    if(d.error || !d.cnpj) return null;
+    return d;
   }catch(e){ return null; }
 }
 
