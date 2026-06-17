@@ -1448,13 +1448,15 @@ function openLead(ldStr){
           const idx = arr.findIndex(l=>l.place_id===live.place_id);
           if(idx>=0) Object.assign(arr[idx], cnpjData);
         });
-        // Persiste no banco — só campos que existem na tabela
+        // Persiste no banco — só campos válidos (nunca salva "–" ou strings vazias)
+        const clean = v => (v && v !== '–' && v !== '-' && v !== '') ? v : null;
         const toSave = {};
-        if(cnpjData.cnpj)          toSave.cnpj          = cnpjData.cnpj;
-        if(cnpjData.cnpj_status)   toSave.cnpj_status   = cnpjData.cnpj_status;
-        if(cnpjData.cnpj_porte)    toSave.cnpj_porte    = cnpjData.cnpj_porte;
-        if(cnpjData.cnpj_abertura) toSave.cnpj_abertura = cnpjData.cnpj_abertura;
-        if(cnpjData.socios)        toSave.socios        = cnpjData.socios;
+        if(clean(cnpjData.cnpj))          toSave.cnpj        = clean(cnpjData.cnpj);
+        if(clean(cnpjData.cnpj_status))   toSave.cnpj_status = clean(cnpjData.cnpj_status);
+        if(clean(cnpjData.cnpj_porte))    toSave.cnpj_porte  = clean(cnpjData.cnpj_porte);
+        // cnpj_abertura é TEXT não DATE — salva como string
+        if(clean(cnpjData.cnpj_abertura)) toSave.cnpj_abertura = clean(cnpjData.cnpj_abertura);
+        if(cnpjData.socios?.length)       toSave.socios      = cnpjData.socios;
         if(Object.keys(toSave).length > 0){
           const {error:pErr} = await sb.from('leads').update(toSave).eq('place_id',live.place_id);
           if(pErr) console.warn('CNPJ save error:', pErr.message);
