@@ -713,11 +713,23 @@ async function loadData(){
   const {data:s} = await sb.from('searches').select('*').order('created_at',{ascending:false}).limit(30);
   if(l){
     allLeads = l;
-    // On initial load, show history tab with all leads
+    // Se não tem busca atual, mostra histórico
     if(currentSearchLeads.length === 0){
       activeLeadsTab = 'history';
-      switchLeadsTab('history');
     }
+    // Atualiza botões de tab com contagens
+    const btnCurrent = document.getElementById('tab-current');
+    const btnHistory = document.getElementById('tab-history');
+    if(btnCurrent) btnCurrent.textContent = 'Atual';
+    if(btnHistory) btnHistory.textContent = `Histórico (${l.length})`;
+    // Aplica estilo ativo
+    if(btnCurrent && btnHistory){
+      const active = {background:'var(--pink)',color:'#fff',borderColor:'var(--pink)'};
+      const inactive = {background:'',color:'',borderColor:''};
+      Object.assign(btnCurrent.style, activeLeadsTab==='current' ? active : inactive);
+      Object.assign(btnHistory.style, activeLeadsTab==='history' ? active : inactive);
+    }
+    updateCityFilter();
     renderLeads();
     updateStats();
   }
@@ -1024,7 +1036,9 @@ function renderLeads(){
   const q=document.getElementById('filter-input')?.value.toLowerCase()||'';
   const sort=document.getElementById('sort-sel')?.value||'score';
   const cityFilter=document.getElementById('city-filter')?.value||'';
+  // current = leads da ultima busca, history = todos do banco
   const source = activeLeadsTab==='current' ? currentSearchLeads : allLeads;
+  console.log('renderLeads tab:', activeLeadsTab, 'source size:', source.length);
   let leads=[...source].filter(l=>{
     const matchQ = !q||l.name?.toLowerCase().includes(q)||l.address?.toLowerCase().includes(q);
     const matchCity = !cityFilter||l.address?.includes(cityFilter);
