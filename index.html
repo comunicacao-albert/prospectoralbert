@@ -1458,11 +1458,14 @@ function openLead(ldStr){
         if(cnpjEl) cnpjEl.textContent = cnpjData.cnpj||'–';
         if(statusEl){
           statusEl.textContent = cnpjData.cnpj_status||'–';
-          statusEl.style.color = cnpjData.cnpj_status==='ATIVA'?'var(--green)':cnpjData.cnpj_status?'var(--orange)':'';
+          statusEl.style.color = cnpjData.cnpj_status==='ATIVA'?'var(--green)':
+                                  cnpjData.cnpj_status==='–'?'var(--muted)':'var(--orange)';
         }
         if(porteEl) porteEl.textContent = cnpjData.cnpj_porte||'–';
         if(sociosEl){ sociosEl.textContent = sociosList; sociosEl.style.fontWeight='700'; }
-        toast('CNPJ encontrado: '+cnpjData.cnpj,'✓');
+        if(cnpjData.cnpj && cnpjData.cnpj !== 'Não encontrado'){
+          toast('CNPJ encontrado: '+cnpjData.cnpj,'✓');
+        }
       }
     }, 300);
   }
@@ -1477,12 +1480,15 @@ function openWhatsApp(){
 async function fetchCNPJ(name){
   if(!name) return null;
   try{
-    // CNPJ via Edge Function (evita CORS)
     const r = await fetch(`${SB_URL}/functions/v1/clever-handler`,{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
       body:JSON.stringify({action:'cnpj',name})
     });
+    if(r.status===404){
+      // Não encontrado — normal para muitos estabelecimentos com nome fantasia
+      return {cnpj:'Não encontrado',cnpj_status:'–',cnpj_porte:'–',cnpj_abertura:'–',socios:[]};
+    }
     if(!r.ok) return null;
     const d = await r.json();
     if(d.error || !d.cnpj) return null;
