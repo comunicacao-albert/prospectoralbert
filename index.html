@@ -1414,12 +1414,67 @@ function openLead(ldStr){
     }
   }
   openModal('lead-modal');
+
+  // Busca CNPJ sob demanda (não bloqueia abertura do modal)
+  if(!live.cnpj && live.name){
+    document.getElementById('m-grid').querySelectorAll && setTimeout(async()=>{
+      const cnpjData = await fetchCNPJ(live.name);
+      if(cnpjData && currentLead?.place_id === live.place_id){
+        // Atualiza lead no estado
+        Object.assign(currentLead, cnpjData);
+        [allLeads, currentSearchLeads].forEach(arr=>{
+          const idx = arr.findIndex(l=>l.place_id===live.place_id);
+          if(idx>=0) Object.assign(arr[idx], cnpjData);
+        });
+        // Persiste no banco
+        await sb.from('leads').update(cnpjData).eq('place_id',live.place_id);
+        // Re-renderiza grid do modal com novos dados
+        const sociosList = cnpjData.socios?.map(s=>s.nome).join(', ')||'–';
+        const cnpjEl = document.querySelector('#m-grid .di:nth-child(9) span');
+        const statusEl = document.querySelector('#m-grid .di:nth-child(10) span');
+        const porteEl = document.querySelector('#m-grid .di:nth-child(11) span');
+        const sociosEl = document.querySelector('#m-grid .di:nth-child(12) span');
+        if(cnpjEl) cnpjEl.textContent = cnpjData.cnpj||'–';
+        if(statusEl){
+          statusEl.textContent = cnpjData.cnpj_status||'–';
+          statusEl.style.color = cnpjData.cnpj_status==='ATIVA'?'var(--green)':cnpjData.cnpj_status?'var(--orange)':'';
+        }
+        if(porteEl) porteEl.textContent = cnpjData.cnpj_porte||'–';
+        if(sociosEl){ sociosEl.textContent = sociosList; sociosEl.style.fontWeight='700'; }
+        toast('CNPJ encontrado: '+cnpjData.cnpj,'✓');
+      }
+    }, 300);
+  }
 }
 
 function openWhatsApp(){
   if(!currentLead?.phone) return;
   const num = currentLead.phone.replace(/[^\d]/g,'').replace(/^0/,'55').replace(/^([^5])/,'55$1');
   window.open(`https://wa.me/${num}`,'_blank');
+}
+
+async function fetchCNPJ(name){
+  if(!name) return null;
+  try{
+    const q = encodeURIComponent(name.replace(/[^a-zA-ZÀ-ú\s]/g,'').trim().split(' ').slice(0,3).join(' '));
+    // Busca via ReceitaWS (API pública gratuita)
+    const r = await fetch(`https://receitaws.com.br/v1/company/search?query=${q}`,{signal:AbortSignal.timeout(5000)});
+    if(!r.ok) return null;
+    const d = await r.json();
+    if(!d?.companies?.length) return null;
+    const cnpj = d.companies[0]?.cnpj?.replace(/[.\-\/]/g,'');
+    if(!cnpj) return null;
+    const r2 = await fetch(`https://receitaws.com.br/v1/company/${cnpj}`,{signal:AbortSignal.timeout(5000)});
+    if(!r2.ok) return null;
+    const det = await r2.json();
+    return {
+      cnpj: det.cnpj,
+      cnpj_status: det.situacao,
+      cnpj_porte: det.porte,
+      cnpj_abertura: det.abertura,
+      socios: (det.qsa||[]).map(s=>({nome:s.nome,qualificacao:s.qual})).slice(0,5),
+    };
+  }catch(e){ return null; }
 }
 
 async function setLeadStatus(status, el){
@@ -1499,6 +1554,7 @@ window.setLeadStatus   = setLeadStatus;
 window.saveNotes       = saveNotes;
 window.openWhatsApp    = openWhatsApp;
 window.loadDashboard   = loadDashboard;
+window.fetchCNPJ       = fetchCNPJ;
 window.doLogin         = doLogin;
 window.doSignup        = doSignup;
 window.doLogout        = doLogout;
