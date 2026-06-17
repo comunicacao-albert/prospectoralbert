@@ -917,7 +917,7 @@ async function getDetails(placeId){
 async function scoreWithClaude(places,bizType,location,extra,radius=5000,lat=null,lng=null){
   const body={bizType,location,extra,radius};
   if(lat&&lng){body.lat=lat;body.lng=lng;}
-  const r=await fetch(`${SB_URL}/functions/v1/clever-hand`,{
+  const r=await fetch(`${SB_URL}/functions/v1/clever-handler`,{
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
     body:JSON.stringify(body)
