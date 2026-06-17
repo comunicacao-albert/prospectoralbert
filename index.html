@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 :root{
   --bg:#fff;--surface:#fff;--bg-page:#f5f5f7;
@@ -498,13 +498,14 @@ hr{border:none;border-top:1px solid var(--border)}
 
 <div class="toast" id="toast"><span id="ti">✓</span><span id="tm"></span></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 // CONFIG — Supabase embutido
 // ═══════════════════════════════════════════════════════════
 const SB_URL = 'https://sdaxjbeuqjwpcwearnbc.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkYXhqYmV1cWp3cGN3ZWFybmJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2ODEzNDEsImV4cCI6MjA5NzI1NzM0MX0.bQyfnbHzN9YuTEYiY-guTggzGz3vQVmX22ViKYjUN3Q';
-const GOOGLE_KEY = ''; // Cole sua Google Maps API Key aqui
+const GOOGLE_KEY = 'AIzaSyBrHnnHQpX9DDUGP_0Wq-39ZNALusLZOPg'; // Cole sua Google Maps API Key aqui
 
 const sb = window.supabase.createClient(SB_URL, SB_KEY);
 
@@ -535,7 +536,6 @@ const ZONES = [
   {id:8,name:'SJC Leste',lat:-23.1900,lng:-45.8300,radius:4000,segs:['churrascaria','academia','salão de beleza','varejo'],days:[22,23,24]},
   {id:9,name:'Revisão geral',lat:-23.1794,lng:-45.8869,radius:8000,segs:['restaurante','pet shop','loja de roupas','padaria','bar'],days:[25,26,27,28,29,30]},
 ];
-  const GOOGLE_KEY = 'AIzaSyBrHnnHQpX9DDUGP_0Wq-39ZNALusLZOPg';
 
 // ═══════════════════════════════════════════════════════════
 // INIT
@@ -1061,6 +1061,27 @@ function toast(msg,icon='✓'){
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
 }
+
+// Expoe funcoes globalmente para os onclick do HTML
+window.switchTab       = switchTab;
+window.doLogin         = doLogin;
+window.doSignup        = doSignup;
+window.doLogout        = doLogout;
+window.showPanel       = showPanel;
+window.runNow          = runNow;
+window.runManual       = runManual;
+window.toggleScheduler = toggleScheduler;
+window.selectZone      = selectZone;
+window.openLead        = openLead;
+window.openModal       = openModal;
+window.closeModal      = closeModal;
+window.exportLeads     = exportLeads;
+window.exportSingle    = exportSingle;
+window.generateInvite  = generateInvite;
+window.copyInvite      = copyInvite;
+window.revokeInvite    = revokeInvite;
+window.toggleRole      = toggleRole;
+window.renderLeads     = renderLeads;
 </script>
 </body>
 </html>
