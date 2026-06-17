@@ -713,22 +713,7 @@ async function loadData(){
   const {data:s} = await sb.from('searches').select('*').order('created_at',{ascending:false}).limit(30);
   if(l){
     allLeads = l;
-    // Se não tem busca atual, mostra histórico
-    if(currentSearchLeads.length === 0){
-      activeLeadsTab = 'history';
-    }
-    // Atualiza botões de tab com contagens
-    const btnCurrent = document.getElementById('tab-current');
-    const btnHistory = document.getElementById('tab-history');
-    if(btnCurrent) btnCurrent.textContent = 'Atual';
-    if(btnHistory) btnHistory.textContent = `Histórico (${l.length})`;
-    // Aplica estilo ativo
-    if(btnCurrent && btnHistory){
-      const active = {background:'var(--pink)',color:'#fff',borderColor:'var(--pink)'};
-      const inactive = {background:'',color:'',borderColor:''};
-      Object.assign(btnCurrent.style, activeLeadsTab==='current' ? active : inactive);
-      Object.assign(btnHistory.style, activeLeadsTab==='history' ? active : inactive);
-    }
+    if(currentSearchLeads.length === 0) activeLeadsTab = 'history';
     updateCityFilter();
     renderLeads();
     updateStats();
@@ -1004,19 +989,21 @@ async function saveLeads(leads,sid){
 // ═══════════════════════════════════════════════════════════
 function switchLeadsTab(tab){
   activeLeadsTab = tab;
-  const btnCurrent = document.getElementById('tab-current');
-  const btnHistory = document.getElementById('tab-history');
-  if(btnCurrent && btnHistory){
-    const active = {background:'var(--pink)',color:'#fff',borderColor:'var(--pink)'};
-    const inactive = {background:'',color:'',borderColor:''};
-    Object.assign(btnCurrent.style, tab==='current' ? active : inactive);
-    Object.assign(btnHistory.style, tab==='history' ? active : inactive);
-    // Update labels with counts
-    btnCurrent.textContent = `Atual${currentSearchLeads.length ? ' ('+currentSearchLeads.length+')' : ''}`;
-    btnHistory.textContent = `Histórico${allLeads.length ? ' ('+allLeads.length+')' : ''}`;
-  }
+  updateTabButtons();
   updateCityFilter();
   renderLeads();
+}
+
+function updateTabButtons(){
+  const btnCurrent = document.getElementById('tab-current');
+  const btnHistory = document.getElementById('tab-history');
+  if(!btnCurrent || !btnHistory) return;
+  const active = {background:'var(--pink)',color:'#fff',borderColor:'var(--pink)'};
+  const inactive = {background:'',color:'',borderColor:''};
+  Object.assign(btnCurrent.style, activeLeadsTab==='current' ? active : inactive);
+  Object.assign(btnHistory.style, activeLeadsTab==='history' ? active : inactive);
+  btnCurrent.textContent = currentSearchLeads.length ? `Atual (${currentSearchLeads.length})` : 'Atual';
+  btnHistory.textContent = allLeads.length ? `Histórico (${allLeads.length})` : 'Histórico';
 }
 
 function updateCityFilter(){
@@ -1048,8 +1035,12 @@ function renderLeads(){
   if(sort==='name')  leads.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   if(sort==='rating')leads.sort((a,b)=>(b.rating||0)-(a.rating||0));
   if(sort==='date')  leads.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-  const total = activeLeadsTab==='current' ? currentSearchLeads.length : allLeads.length;
-  document.getElementById('leads-count').textContent = leads.length ? `(${leads.length}${leads.length<total?' filtrados':''})`:'';
+  updateTabButtons();
+  const countEl = document.getElementById('leads-count');
+  if(countEl){
+    const total = activeLeadsTab==='current' ? currentSearchLeads.length : allLeads.length;
+    countEl.textContent = leads.length ? `(${leads.length}${leads.length<total?' filtrados':''})` : '';
+  }
   const c=document.getElementById('leads-container');
   if(!leads.length){
     const msg = activeLeadsTab==='current'
@@ -1235,6 +1226,7 @@ function toast(msg,icon='✓'){
 // Expoe funcoes globalmente para os onclick do HTML
 window.switchTab       = switchTab;
 window.switchLeadsTab  = switchLeadsTab;
+window.updateTabButtons = updateTabButtons;
 window.cycleStatus     = cycleStatus;
 window.setLeadStatus   = setLeadStatus;
 window.saveNotes       = saveNotes;
