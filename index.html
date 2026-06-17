@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prospector albert — SJC e região</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    /* albert — light theme */
+    --bg:        #ffffff;
+    --surface:   #ffffff;
+    --surface2:  #fafafa;
+    --bg-page:   #f5f5f7;
+    --border:    #e8e8e8;
+    --border2:   #d0d0d0;
+    --text:      #111111;
+    --muted:     #666666;
+    --muted2:    #999999;
+
+    /* albert pink — cor primária */
+    --pink:      #E8185D;
+    --pink-dk:   #c4124d;
+    --pink-bg:   rgba(232,24,93,.07);
+    --pink-bd:   rgba(232,24,93,.2);
+
+    /* semânticas secundárias */
+    --orange:    #f97316;
+    --orange-bg: rgba(249,115,22,.08);
+    --green:     #16a34a;
+    --green-bg:  rgba(22,163,74,.08);
+    --gray-bg:   #f0f0f0;
+
+    --radius:    8px;
+    --font:      'Inter', system-ui, sans-serif;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow:    0 2px 8px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg-page);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh}
+
+  /* ── KEYFRAMES ── */
+  @keyframes ring{0%{transform:scale(1);opacity:.4}100%{transform:scale(2);opacity:0}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── TOPBAR ── */
+  .topbar{
+    height:56px;background:var(--surface);
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;padding:0 24px;gap:12px;
+    position:sticky;top:0;z-index:100;
+    box-shadow:var(--shadow-sm);
+  }
+  .logo{
+    font-size:17px;font-weight:800;letter-spacing:-.6px;
+    display:flex;align-items:center;gap:10px;color:var(--text);
+  }
+  .logo-wrap{position:relative;width:30px;height:30px;flex-shrink:0}
+  .logo-pulse{
+    position:absolute;inset:0;border-radius:8px;
+    background:var(--pink);animation:ring 2.2s ease-out infinite;opacity:0;
+  }
+  .logo-mark{
+    position:absolute;inset:0;border-radius:8px;
+    background:var(--pink);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:900;color:#fff;letter-spacing:-1px;
+  }
+
+  .tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px}
+  .tag-albert{background:var(--pink-bg);color:var(--pink);border:1px solid var(--pink-bd)}
+  .tag-sjc{background:#f0f0f0;color:#555;border:1px solid #ddd}
+
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+
+  .btn{
+    padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;
+    cursor:pointer;border:none;transition:all .14s;
+    display:flex;align-items:center;gap:5px;font-family:var(--font);
+    white-space:nowrap;
+  }
+  .btn-primary{background:var(--pink);color:#fff}
+  .btn-primary:hover{background:var(--pink-dk)}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+  .btn-ghost{background:#fff;border:1px solid var(--border2);color:var(--muted)}
+  .btn-ghost:hover{border-color:var(--pink-bd);color:var(--text)}
+
+  /* ── LAYOUT ── */
+  .layout{display:grid;grid-template-columns:292px 1fr;min-height:calc(100vh - 56px)}
+
+  /* ── SIDEBAR ── */
+  .sidebar{
+    background:var(--surface);border-right:1px solid var(--border);
+    padding:16px;display:flex;flex-direction:column;gap:14px;
+    overflow-y:auto;max-height:calc(100vh - 56px);position:sticky;top:56px;
+  }
+  .sb-title{
+    font-size:10px;font-weight:700;color:var(--muted2);
+    text-transform:uppercase;letter-spacing:.9px;margin-bottom:5px;
+  }
+  .form-group{display:flex;flex-direction:column;gap:5px}
+  label{font-size:11px;color:var(--muted);font-weight:500}
+  input,select,textarea{
+    background:#fff;border:1.5px solid var(--border);color:var(--text);
+    border-radius:7px;padding:7px 10px;font-size:12px;font-family:var(--font);
+    transition:border-color .14s,box-shadow .14s;width:100%;
+  }
+  input:focus,select:focus,textarea:focus{
+    outline:none;border-color:var(--pink);
+    box-shadow:0 0 0 3px var(--pink-bg);
+  }
+  textarea{resize:vertical;min-height:60px}
+  hr{border:none;border-top:1px solid var(--border)}
+
+  /* Scheduler */
+  .scheduler-card{
+    background:var(--bg-page);border:1.5px solid var(--border);
+    border-radius:9px;padding:12px;
+  }
+  .sched-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .sched-status{display:flex;align-items:center;gap:7px;font-size:12px}
+  .sched-dot{width:7px;height:7px;border-radius:50%;background:var(--border2)}
+  .sched-dot.active{background:var(--pink);animation:pulse 1.6s infinite}
+  .sched-dot.running{background:var(--orange);animation:pulse .8s infinite}
+
+  /* Zones */
+  .zone-list{display:flex;flex-direction:column;gap:3px;max-height:210px;overflow-y:auto}
+  .zone-item{
+    display:flex;align-items:center;gap:8px;padding:6px 8px;
+    border-radius:7px;font-size:11px;cursor:pointer;
+    border:1.5px solid transparent;transition:all .12s;
+  }
+  .zone-item:hover{background:var(--bg-page);border-color:var(--border)}
+  .zone-item.current{background:var(--pink-bg);border-color:var(--pink-bd)}
+  .zone-item.done{opacity:.4}
+  .zone-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .zone-name{flex:1;font-weight:600;color:var(--text)}
+  .zone-segs{color:var(--muted2);font-size:10px;margin-top:1px}
+  .zone-count{font-size:10px;color:var(--pink);font-weight:700}
+
+  .progress-bar{height:2px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:8px}
+  .progress-fill{height:100%;background:var(--pink);border-radius:2px;transition:width .4s}
+
+  /* Main */
+  .main{background:var(--bg-page);padding:20px;display:flex;flex-direction:column;gap:16px;overflow-y:auto}
+
+  /* Stats */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  .stat-card{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:14px 16px;
+    box-shadow:var(--shadow-sm);transition:box-shadow .15s,border-color .15s;
+  }
+  .stat-card:hover{box-shadow:var(--shadow);border-color:var(--border2)}
+  .stat-value{font-size:26px;font-weight:800;line-height:1;margin-bottom:4px;letter-spacing:-.8px;color:var(--text)}
+  .stat-label{font-size:11px;color:var(--muted);font-weight:500}
+  .v-pink{color:var(--pink)}
+  .v-orange{color:var(--orange)}
+  .v-green{color:var(--green)}
+  .v-gray{color:var(--muted)}
+
+  /* Agent log */
+  .agent-panel{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);
+  }
+  .panel-header{
+    padding:10px 14px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--bg-page);
+  }
+  .panel-title{font-size:12px;font-weight:700;color:var(--text)}
+  .agent-log{
+    padding:10px 14px;font-size:11px;font-family:'Courier New',monospace;
+    min-height:60px;max-height:140px;overflow-y:auto;line-height:2;
+    color:var(--muted);background:#fff;
+  }
+  .log-ok{color:var(--green);font-weight:600}
+  .log-info{color:#2563eb;font-weight:500}
+  .log-warn{color:var(--orange);font-weight:600}
+  .log-time{color:var(--muted2);margin-right:6px}
+
+  /* Leads header + filter */
+  .leads-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px}
+  .leads-header-title{font-size:14px;font-weight:700;color:var(--text)}
+
+  /* Leads table */
+  .leads-table{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);
+  }
+  .th-row{
+    display:grid;grid-template-columns:2fr 1.2fr 1fr .9fr .7fr .6fr;
+    padding:9px 16px;border-bottom:1px solid var(--border);
+    font-size:10px;font-weight:700;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.7px;
+    background:var(--bg-page);
+  }
+  .lead-row{
+    display:grid;grid-template-columns:2fr 1.2fr 1fr .9fr .7fr .6fr;
+    padding:11px 16px;border-bottom:1px solid var(--border);
+    align-items:center;cursor:pointer;transition:background .1s;
+    background:#fff;
+  }
+  .lead-row:last-child{border-bottom:none}
+  .lead-row:hover{background:var(--pink-bg)}
+  .lead-name{font-weight:700;font-size:12px;color:var(--text)}
+  .lc{font-size:11px;color:var(--muted)}
+  .score-bar{height:2px;border-radius:2px;background:var(--border);overflow:hidden;margin-top:4px}
+  .score-fill{height:100%;border-radius:2px;background:var(--pink)}
+
+  /* Priority tags */
+  .tag-hot{background:rgba(232,24,93,.08);color:var(--pink);border:1px solid var(--pink-bd);font-weight:700}
+  .tag-warm{background:var(--orange-bg);color:var(--orange);border:1px solid rgba(249,115,22,.25);font-weight:700}
+  .tag-cold{background:var(--gray-bg);color:var(--muted);border:1px solid var(--border);font-weight:600}
+
+  /* Empty */
+  .empty-state{
+    text-align:center;padding:56px 20px;color:var(--muted);
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    background:#fff;
+  }
+
+  /* Spinner */
+  .spinner{width:12px;height:12px;border:2px solid transparent;border-top-color:currentColor;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+
+  /* Modals */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;transition:opacity .2s;
+    backdrop-filter:blur(3px);
+  }
+  .modal-overlay.open{opacity:1;pointer-events:all}
+  .modal{
+    background:#fff;border:1px solid var(--border);border-radius:14px;
+    width:520px;max-width:95vw;max-height:88vh;overflow-y:auto;
+    transform:translateY(10px);transition:transform .2s;
+    box-shadow:0 20px 60px rgba(0,0,0,.15);
+  }
+  .modal-overlay.open .modal{transform:translateY(0)}
+  .mh{
+    padding:18px 22px 14px;border-bottom:1px solid var(--border);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .mh h3{font-size:15px;font-weight:800;color:var(--text)}
+  .mc{padding:18px 22px;display:flex;flex-direction:column;gap:14px}
+  .mf{display:flex;gap:8px;padding:14px 22px;border-top:1px solid var(--border);background:var(--bg-page);border-radius:0 0 14px 14px}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .di label{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px;font-weight:700}
+  .di span{font-size:13px;font-weight:600;color:var(--text)}
+  .di a{color:var(--pink);text-decoration:none}
+  .di a:hover{text-decoration:underline}
+  .ai-box{
+    background:var(--bg-page);border:1px solid var(--border);
+    border-radius:7px;padding:12px;font-size:13px;line-height:1.7;
+    color:var(--muted);border-left:3px solid var(--pink);
+  }
+  .cfg-section{display:flex;flex-direction:column;gap:10px}
+  .cfg-section h4{font-size:10px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.6px}
+  .info-box{
+    background:var(--pink-bg);border:1px solid var(--pink-bd);
+    border-radius:7px;padding:9px 12px;font-size:11px;color:var(--muted);line-height:1.6;
+  }
+
+  /* Toast */
+  .toast{
+    position:fixed;bottom:20px;right:20px;z-index:300;
+    background:#fff;border:1px solid var(--border);
+    border-radius:9px;padding:10px 14px;font-size:12px;font-weight:500;
+    display:flex;align-items:center;gap:7px;
+    transform:translateY(12px);opacity:0;transition:all .25s;
+    pointer-events:none;max-width:300px;
+    box-shadow:var(--shadow);border-left:3px solid var(--pink);
+    color:var(--text);
+  }
+  .toast.show{transform:translateY(0);opacity:1}
+
+  /* Scrollbar */
+  ::-webkit-scrollbar{width:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted2)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo"><div class="logo-wrap"><div class="logo-pulse"></div><div class="logo-mark">a.</div></div>Prospector</div>
+  <span class="tag tag-albert">albert</span>
+  <span class="tag tag-sjc">SJC + região</span>
+  <div class="topbar-right">
+    <button class="btn btn-ghost" onclick="openConfig()">⚙ APIs</button>
+    <button class="btn btn-ghost" onclick="exportLeads()">↓ CSV</button>
+    <button class="btn btn-primary" id="run-now-btn" onclick="runNow()">
+      <span id="run-now-icon">▶</span> Rodar agora
+    </button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <!-- Scheduler -->
+    <div>
+      <div class="sb-title">Agendador automático</div>
+      <div class="scheduler-card">
+        <div class="sched-row">
+          <div class="sched-status">
+            <div class="sched-dot" id="sched-dot"></div>
+            <span id="sched-label" style="color:var(--muted)">Inativo</span>
+          </div>
+          <button class="btn btn-primary" style="padding:5px 10px;font-size:11px" id="sched-btn" onclick="toggleScheduler()">Ativar</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px" id="sched-next">–</div>
+        <div class="progress-bar"><div class="progress-fill" id="sched-progress" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- Zone list -->
+    <div>
+      <div class="sb-title">Zonas de cobertura</div>
+      <div class="zone-list" id="zone-list"></div>
+    </div>
+
+    <hr>
+
+    <!-- Manual override -->
+    <div>
+      <div class="sb-title">Busca manual</div>
+      <div class="form-group">
+        <label>Tipo de negócio</label>
+        <input id="biz-type" type="text" placeholder="restaurante, pet shop, moda...">
+      </div>
+      <div class="form-group">
+        <label>Cidade ou bairro</label>
+        <input id="location" type="text" placeholder="São José dos Campos, Centro">
+      </div>
+      <div class="form-group">
+        <label>Raio</label>
+        <select id="radius">
+          <option value="2000">2 km</option>
+          <option value="5000" selected>5 km</option>
+          <option value="10000">10 km</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Instrução extra (opcional)</label>
+        <textarea id="extra-prompt" placeholder="Priorize estabelecimentos com mais de 50 avaliações..."></textarea>
+      </div>
+      <button class="btn btn-ghost" style="width:100%;margin-top:4px" onclick="runManual()">Busca manual</button>
+    </div>
+
+    <hr>
+
+    <div>
+      <div class="sb-title">Últimas buscas</div>
+      <div id="history-list" style="font-size:11px;color:var(--muted)">–</div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card"><div class="stat-value v-pink" id="s-total">0</div><div class="stat-label">Leads totais</div></div>
+      <div class="stat-card"><div class="stat-value v-pink" id="s-hot">0</div><div class="stat-label">HOT — alta prioridade</div></div>
+      <div class="stat-card"><div class="stat-value v-orange" id="s-warm">0</div><div class="stat-label">WARM — média prioridade</div></div>
+      <div class="stat-card"><div class="stat-value v-green" id="s-searches">0</div><div class="stat-label">Buscas realizadas</div></div>
+      <div class="stat-card"><div class="stat-value v-pink" id="s-zones">0/9</div><div class="stat-label">Zonas cobertas</div></div>
+    </div>
+
+    <!-- Agent log -->
+    <div class="agent-panel" id="agent-panel" style="display:none">
+      <div class="panel-header">
+        <span class="panel-title">Agente em execução</span>
+        <span id="agent-status" style="font-size:11px;color:var(--muted)">–</span>
+      </div>
+      <div class="agent-log" id="agent-log"></div>
+    </div>
+
+    <!-- Leads -->
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px">
+        <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px">Leads ICP albert <span id="leads-count" style="color:var(--muted);font-weight:500;font-size:12px"></span></div>
+        <div style="display:flex;gap:6px">
+          <select style="width:150px;font-size:12px;background:#fff;color:var(--text);border:1.5px solid var(--border)" id="sort-sel" onchange="renderLeads()">
+            <option value="score">Por score</option>
+            <option value="name">Nome A–Z</option>
+            <option value="rating">Avaliação</option>
+            <option value="date">Mais recentes</option>
+          </select>
+          <input style="width:180px;font-size:12px;background:#fff;color:var(--text);border:1.5px solid var(--border)" type="text" placeholder="Filtrar..." id="filter-input" oninput="renderLeads()">
+        </div>
+      </div>
+      <div id="leads-container"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- LEAD MODAL -->
+<div class="modal-overlay" id="lead-modal">
+  <div class="modal">
+    <div class="mh"><h3 id="m-title">–</h3><button style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer" onclick="closeModal('lead-modal')">✕</button></div>
+    <div class="mc">
+      <div class="detail-grid" id="m-grid"></div>
+      <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Análise do agente</div><div class="ai-box" id="m-summary">–</div></div>
+    </div>
+    <div class="mf"><button class="btn btn-primary" onclick="exportSingle()">Exportar lead</button><button class="btn btn-ghost" onclick="closeModal('lead-modal')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- CONFIG MODAL -->
+<div class="modal-overlay" id="config-modal">
+  <div class="modal">
+    <div class="mh"><h3>Configurar APIs</h3><button style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer" onclick="closeModal('config-modal')">✕</button></div>
+    <div class="mc">
+      <div class="cfg-section"><h4>Supabase</h4>
+        <div class="form-group"><label>URL</label><input type="text" id="cfg-sb-url" placeholder="https://xxxx.supabase.co"></div>
+        <div class="form-group"><label>Anon Key</label><input type="password" id="cfg-sb-key" placeholder="eyJhbGci..."></div>
+      </div>
+      <div class="cfg-section"><h4>Google Maps</h4>
+        <div class="form-group"><label>API Key</label><input type="password" id="cfg-g-key" placeholder="AIzaSy..."></div>
+      </div>
+      <div class="info-box">🔒 A chave do Claude fica segura no servidor (Supabase Edge Function). Apenas a Google Maps API Key fica no browser — restrinja-a ao seu domínio no Google Cloud Console.</div>
+    </div>
+    <div class="mf"><button class="btn btn-primary" onclick="saveConfig()">Salvar</button><button class="btn btn-ghost" onclick="closeModal('config-modal')">Cancelar</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="ti">✓</span><span id="tm"></span></div>
+
+<script>
+// ─── ICP ALBERT ──────────────────────────────────────────────────────────────
+const ICP_SEGMENTS = [
+  'restaurante','hamburgueria','pizzaria','churrascaria','bar',
+  'padaria','confeitaria','doceria','cafeteria',
+  'pet shop','clínica veterinária',
+  'loja de roupas','moda feminina','sapataria','brechó',
+  'academia','salão de beleza','barbearia','spa','loja de cosméticos',
+  'loja de brinquedos','varejo','mercadinho','empório','sorveteria'
+];
+
+const EXCLUDE_TERMS = ['farmácia','drogaria','oficina','auto peça','concessionária',
+  'materiais de construção','distribuidora','atacado','clínica médica','laboratório'];
+
+// ─── ZONAS SJC ───────────────────────────────────────────────────────────────
+const ZONES = [
+  { id:1, name:'Centro SJC',      lat:-23.1794, lng:-45.8869, radius:3000, segs:['restaurante','padaria','loja de roupas','varejo'], days:[1,2,3] },
+  { id:2, name:'Norte SJC',       lat:-23.1550, lng:-45.8700, radius:4000, segs:['pet shop','academia','confeitaria','mercadinho'], days:[4,5,6] },
+  { id:3, name:'Sul SJC',         lat:-23.2100, lng:-45.9000, radius:4000, segs:['restaurante','bar','sapataria','loja de roupas'], days:[7,8,9] },
+  { id:4, name:'Jacareí',         lat:-23.3056, lng:-45.9658, radius:4000, segs:['restaurante','pet shop','varejo','padaria'], days:[10,11,12] },
+  { id:5, name:'Caçapava',        lat:-23.1019, lng:-45.7069, radius:3000, segs:['padaria','pet shop','varejo','academia'], days:[13,14,15] },
+  { id:6, name:'Taubaté',         lat:-23.0261, lng:-45.5553, radius:5000, segs:['restaurante','moda feminina','pet shop','cafeteria'], days:[16,17,18] },
+  { id:7, name:'Pindamonhangaba', lat:-22.9236, lng:-45.4613, radius:3000, segs:['varejo','padaria','restaurante','sapataria'], days:[19,20,21] },
+  { id:8, name:'SJC Leste',       lat:-23.1900, lng:-45.8300, radius:4000, segs:['churrascaria','academia','salão de beleza','varejo'], days:[22,23,24] },
+  { id:9, name:'Revisão geral',   lat:-23.1794, lng:-45.8869, radius:8000, segs:['restaurante','pet shop','loja de roupas','padaria','bar'], days:[25,26,27,28,29,30] },
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let supabase = null;
+let allLeads = [];
+let searches = [];
+let schedulerActive = false;
+let schedulerTimer = null;
+let currentLead = null;
+let zoneProgress = {};
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+(function init(){
+  renderZones();
+  const sbUrl = ls('sb_url'), sbKey = ls('sb_key');
+  if(sbUrl && sbKey) initSupabase(sbUrl, sbKey);
+  else loadLocal();
+  loadZoneProgress();
+})();
+
+function ls(k){ return localStorage.getItem(k)||''; }
+function lss(k,v){ localStorage.setItem(k,v); }
+
+function initSupabase(url,key){
+  supabase = window.supabase.createClient(url,key);
+  loadRemote();
+}
+
+async function loadRemote(){
+  try{
+    const {data:l} = await supabase.from('leads').select('*').order('score',{ascending:false}).limit(500);
+    const {data:s} = await supabase.from('searches').select('*').order('created_at',{ascending:false}).limit(20);
+    if(l){ allLeads=l; renderLeads(); updateStats(); }
+    if(s){ searches=s; renderHistory(); }
+  }catch(e){ loadLocal(); }
+}
+
+function loadLocal(){
+  allLeads = JSON.parse(ls('pl')||'[]');
+  searches = JSON.parse(ls('ps')||'[]');
+  renderLeads(); updateStats(); renderHistory();
+}
+
+function loadZoneProgress(){
+  zoneProgress = JSON.parse(ls('zp')||'{}');
+  renderZones();
+}
+
+function saveZoneProgress(){
+  lss('zp', JSON.stringify(zoneProgress));
+}
+
+// ─── ZONE RENDERER ────────────────────────────────────────────────────────────
+function getZoneForToday(){
+  const dayOfMonth = new Date().getDate();
+  return ZONES.find(z => z.days.includes(dayOfMonth)) || ZONES[0];
+}
+
+function renderZones(){
+  const today = getZoneForToday();
+  const list = document.getElementById('zone-list');
+  list.innerHTML = ZONES.map(z => {
+    const done = zoneProgress[z.id] > 0;
+    const current = z.id === today.id;
+    const count = zoneProgress[z.id] || 0;
+    return `<div class="zone-item${current?' current':''}${done&&!current?' done':''}" onclick="selectZone(${z.id})">
+      <div class="zone-dot" style="background:${current?'#2ea84f':done?'#8b949e':'#30363d'}"></div>
+      <div>
+        <div class="zone-name">${z.name}</div>
+        <div class="zone-segs">${z.segs.slice(0,3).join(' · ')}</div>
+      </div>
+      ${count>0?`<div class="zone-count">${count}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function selectZone(id){
+  const zone = ZONES.find(z=>z.id===id);
+  if(!zone) return;
+  document.getElementById('location').value = zone.name;
+  document.getElementById('biz-type').value = zone.segs[0];
+  document.getElementById('radius').value = zone.radius;
+  toast('Zona selecionada: '+zone.name,'📍');
+}
+
+// ─── SCHEDULER ───────────────────────────────────────────────────────────────
+function toggleScheduler(){
+  schedulerActive = !schedulerActive;
+  const btn = document.getElementById('sched-btn');
+  const dot = document.getElementById('sched-dot');
+  const label = document.getElementById('sched-label');
+  if(schedulerActive){
+    btn.textContent = 'Pausar';
+    btn.style.background = 'rgba(232,24,93,.1)';
+    btn.style.borderColor = 'rgba(232,24,93,.3)';
+    btn.style.color = '#E8185D';
+    dot.className = 'sched-dot active';
+    label.textContent = 'Ativo — rodando diariamente';
+    label.style.color = 'var(--pink)';
+    lss('sched_active','1');
+    scheduleNext();
+    toast('Agendador ativado!','🤖');
+  } else {
+    btn.textContent = 'Ativar';
+    btn.style.cssText = '';
+    dot.className = 'sched-dot';
+    label.textContent = 'Pausado';
+    label.style.color = 'var(--muted)';
+    lss('sched_active','0');
+    if(schedulerTimer) clearTimeout(schedulerTimer);
+    document.getElementById('sched-next').textContent = '–';
+    document.getElementById('sched-progress').style.width='0%';
+    toast('Agendador pausado','⏸');
+  }
+}
+
+function scheduleNext(){
+  if(!schedulerActive) return;
+  const now = new Date();
+  const runAt = new Date();
+  runAt.setHours(7,0,0,0);
+  if(now >= runAt) runAt.setDate(runAt.getDate()+1);
+  const msUntil = runAt - now;
+  const nextLabel = document.getElementById('sched-next');
+  nextLabel.textContent = `Próxima: ${runAt.toLocaleString('pt-BR',{weekday:'short',hour:'2-digit',minute:'2-digit'})}`;
+  const totalDay = 24*60*60*1000;
+  const elapsed = totalDay - msUntil;
+  document.getElementById('sched-progress').style.width = Math.min(99,(elapsed/totalDay*100)).toFixed(1)+'%';
+  schedulerTimer = setTimeout(async()=>{
+    if(!schedulerActive) return;
+    await runScheduledSearch();
+    scheduleNext();
+  }, msUntil);
+}
+
+async function runScheduledSearch(){
+  const zone = getZoneForToday();
+  log('info',`Agendador: iniciando zona ${zone.id} — ${zone.name}`);
+  const gKey = ls('g_key');
+  if(!gKey||!cKey){ log('warn','API keys não configuradas — busca cancelada'); return; }
+  for(const seg of zone.segs){
+    await runSearch(seg, zone.name, zone.radius.toString(), zone.lat, zone.lng);
+    await sleep(2000);
+  }
+  zoneProgress[zone.id] = (zoneProgress[zone.id]||0) + zone.segs.length;
+  saveZoneProgress();
+  renderZones();
+  updateStats();
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// ─── MANUAL TRIGGER ──────────────────────────────────────────────────────────
+function runNow(){
+  const zone = getZoneForToday();
+  toast('Iniciando zona de hoje: '+zone.name,'🚀');
+  runScheduledSearch();
+}
+
+async function runManual(){
+  const biz  = document.getElementById('biz-type').value.trim();
+  const loc  = document.getElementById('location').value.trim();
+  const rad  = document.getElementById('radius').value;
+  const gKey = ls('g_key');
+  if(!biz||!loc){ toast('Preencha tipo de negócio e cidade','⚠'); return; }
+  if(!gKey){ toast('Configure a Google Maps API Key','⚠'); openConfig(); return; }
+  if(!ls('sb_url')){ toast('Configure a URL do Supabase','⚠'); openConfig(); return; }
+  await runSearch(biz, loc, rad, null, null);
+}
+
+// ─── CORE SEARCH ─────────────────────────────────────────────────────────────
+let isRunning = false;
+async function runSearch(bizType, location, radius, lat, lng){
+  if(isRunning){ log('warn','Busca já em execução, aguarde...'); return; }
+  isRunning = true;
+  showPanel();
+  document.getElementById('agent-panel').style.display='block';
+  const gKey = ls('g_key');
+  try{
+    log('info',`Buscando "${bizType}" em ${location}`);
+    let geo = lat && lng ? {lat,lng} : await geocode(location, gKey);
+    if(!geo) throw new Error('Geocodificação falhou para '+location);
+    log('ok',`Localização: ${geo.lat.toFixed(4)}, ${geo.lng.toFixed(4)}`);
+
+    const places = await searchPlaces(bizType, geo, radius, gKey);
+    log('ok',`${places.length} lugares encontrados`);
+
+    const detailed = [];
+    const limit = Math.min(places.length, 12);
+    for(let i=0;i<limit;i++){
+      const d = await getDetails(places[i].place_id, gKey);
+      if(d) detailed.push(d);
+    }
+    log('ok',`${detailed.length} detalhes coletados`);
+
+    if(!detailed.length){ log('warn','Nenhum detalhe retornado'); isRunning=false; return; }
+
+    log('info','Enviando para Claude analisar (ICP albert)...');
+    const scored = await scoreWithClaude(detailed, bizType, location, ls('extra_prompt')||'');
+    log('ok',`${scored.length} leads qualificados`);
+
+    const sid = await saveSearch(bizType, location, radius, scored.length);
+    await saveLeads(scored, sid);
+    allLeads = [...scored, ...allLeads.filter(l=>!scored.find(s=>s.place_id===l.place_id))];
+    allLeads.sort((a,b)=>(b.score||0)-(a.score||0));
+    renderLeads(); updateStats(); renderHistory();
+    document.getElementById('agent-status').textContent='Concluído';
+    toast(`${scored.length} leads ICP encontrados!','✓`);
+  }catch(e){
+    log('warn','Erro: '+e.message);
+    toast('Erro: '+e.message,'✕');
+  }
+  isRunning = false;
+}
+
+function showPanel(){
+  const p = document.getElementById('agent-panel');
+  p.style.display='block';
+  document.getElementById('agent-log').innerHTML='';
+  document.getElementById('agent-status').textContent='Em execução...';
+}
+
+// ─── GOOGLE MAPS ─────────────────────────────────────────────────────────────
+async function geocode(address, key){
+  const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address+', São Paulo, Brasil')}&key=${key}&language=pt-BR`);
+  const d = await r.json();
+  return d.results?.[0]?.geometry?.location || null;
+}
+
+async function searchPlaces(query, geo, radius, key){
+  const r = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${geo.lat},${geo.lng}&radius=${radius}&keyword=${encodeURIComponent(query)}&key=${key}&language=pt-BR`);
+  const d = await r.json();
+  return d.results || [];
+}
+
+async function getDetails(placeId, key){
+  const fields='place_id,name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,types,business_status';
+  const r = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${key}&language=pt-BR`);
+  const d = await r.json();
+  return d.result || null;
+}
+
+// ─── CLAUDE SCORING via Edge Function (proxy seguro) ────────────────────────
+async function scoreWithClaude(places, bizType, location, extra){
+  const sbUrl = ls('sb_url');
+  if(!sbUrl) throw new Error('URL do Supabase não configurada — vá em ⚙ APIs');
+
+  const payload = places.map(p=>({
+    place_id: p.place_id,
+    name: p.name,
+    address: p.formatted_address,
+    phone: p.formatted_phone_number,
+    website: p.website,
+    rating: p.rating,
+    reviews: p.user_ratings_total,
+    types: p.types?.slice(0,4),
+    status: p.business_status
+  }));
+
+  const fnUrl = `${sbUrl}/functions/v1/prospect`;
+  const r = await fetch(fnUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': ls('sb_key'),
+      'Authorization': `Bearer ${ls('sb_key')}`,
+    },
+    body: JSON.stringify({ places: payload, bizType, location, extra })
+  });
+
+  if(!r.ok){
+    const err = await r.text();
+    throw new Error(`Edge Function retornou ${r.status}: ${err}`);
+  }
+
+  const data = await r.json();
+  if(data.error) throw new Error(data.error);
+  return data.leads || [];
+}
+
+// ─── PERSISTENCE ─────────────────────────────────────────────────────────────
+async function saveSearch(biz, loc, rad, count){
+  const entry={id:Date.now(),biz_type:biz,location:loc,radius:parseInt(rad),results_count:count,created_at:new Date().toISOString()};
+  const hist=JSON.parse(ls('ps')||'[]');
+  hist.unshift(entry); lss('ps',JSON.stringify(hist.slice(0,30)));
+  searches=hist.slice(0,20); renderHistory();
+  if(supabase){ try{ const {data}=await supabase.from('searches').insert({biz_type:biz,location:loc,radius:parseInt(rad),results_count:count}).select().single(); return data?.id; }catch(e){} }
+  return entry.id;
+}
+
+async function saveLeads(leads, sid){
+  const rows=leads.map(l=>({...l,search_id:sid}));
+  const existing=JSON.parse(ls('pl')||'[]');
+  const merged=[...rows,...existing.filter(e=>!rows.find(r=>r.place_id===e.place_id))];
+  lss('pl',JSON.stringify(merged.slice(0,2000)));
+  if(supabase){ try{ await supabase.from('leads').upsert(rows,{onConflict:'place_id'}); }catch(e){} }
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function renderLeads(){
+  const q=document.getElementById('filter-input').value.toLowerCase();
+  const sort=document.getElementById('sort-sel').value;
+  let leads=[...allLeads].filter(l=>!q||l.name?.toLowerCase().includes(q)||l.address?.toLowerCase().includes(q));
+  if(sort==='score') leads.sort((a,b)=>(b.score||0)-(a.score||0));
+  if(sort==='name') leads.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(sort==='rating') leads.sort((a,b)=>(b.rating||0)-(a.rating||0));
+  if(sort==='date') leads.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  document.getElementById('leads-count').textContent=leads.length?`(${leads.length})`:'';
+  const c=document.getElementById('leads-container');
+  if(!leads.length){
+    c.innerHTML=`<div class="leads-table"><div class="empty-state"><div style="font-size:32px;opacity:.2">🔍</div><div style="font-size:14px;font-weight:500">Nenhum lead ainda</div><div style="font-size:12px;max-width:280px;line-height:1.6">Ative o agendador ou clique em "Rodar agora" para o agente buscar leads ICP do albert em SJC e região.</div></div></div>`;
+    return;
+  }
+  c.innerHTML=`<div class="leads-table"><div class="th-row"><div>Empresa</div><div>Endereço</div><div>Segmento</div><div>Avaliação</div><div>Score</div><div>Perfil</div></div>${leads.map(l=>leadRow(l)).join('')}</div>`;
+}
+
+function leadRow(l){
+  const addr=(l.address||'').split(',').slice(0,2).join(',');
+  const seg=l.segment||'–';
+  const rat=l.rating?`★ ${l.rating}`:' –';
+  const score=l.score||0;
+  const tc=l.priority==='hot'?'tag-hot':l.priority==='warm'?'tag-warm':'tag-cold';
+  const tl=l.priority==='hot'?'HOT':l.priority==='warm'?'WARM':'COLD';
+  const ld=JSON.stringify(l).replace(/"/g,'&quot;');
+  return `<div class="lead-row" onclick="openLead(${ld})"><div><div class="lead-name">${l.name||'–'}</div></div><div class="lc" title="${l.address||''}">${addr}</div><div class="lc">${seg}</div><div class="lc">${rat}</div><div><div style="font-size:11px;font-weight:500">${score}</div><div class="score-bar"><div class="score-fill" style="width:${score}%"></div></div></div><div><span class="tag ${tc}" style="font-size:10px;padding:2px 7px">${tl}</span></div></div>`;
+}
+
+function updateStats(){
+  document.getElementById('s-total').textContent=allLeads.length;
+  document.getElementById('s-hot').textContent=allLeads.filter(l=>l.priority==='hot').length;
+  document.getElementById('s-warm').textContent=allLeads.filter(l=>l.priority==='warm').length;
+  document.getElementById('s-searches').textContent=searches.length;
+  const covered=Object.keys(zoneProgress).filter(k=>zoneProgress[k]>0).length;
+  document.getElementById('s-zones').textContent=`${covered}/9`;
+}
+
+function renderHistory(){
+  const el=document.getElementById('history-list');
+  if(!searches.length){ el.textContent='–'; return; }
+  el.innerHTML=searches.slice(0,8).map(s=>`<div style="padding:5px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:11px;font-weight:500">${s.biz_type}</div><div style="font-size:10px;color:var(--muted)">${s.location}</div></div><div style="font-size:10px;color:var(--pink)">${s.results_count} leads</div></div>`).join('');
+}
+
+// ─── MODALS ───────────────────────────────────────────────────────────────────
+function openLead(l){
+  if(typeof l==='string') l=JSON.parse(l.replace(/&quot;/g,'"'));
+  currentLead=l;
+  document.getElementById('m-title').textContent=l.name||'–';
+  document.getElementById('m-summary').textContent=l.ai_summary||'–';
+  const items=[['Endereço',l.address||'–'],['Telefone',l.phone||'–'],['Website',l.website?`<a href="${l.website}" target="_blank">${l.website}</a>`:'–'],['Avaliação',l.rating?`★ ${l.rating} (${l.reviews_count||0})`:'–'],['Score',`${l.score||0}/100`],['Segmento',l.segment||'–']];
+  document.getElementById('m-grid').innerHTML=items.map(([k,v])=>`<div class="di"><label>${k}</label><span>${v}</span></div>`).join('');
+  openModal('lead-modal');
+}
+
+function openConfig(){
+  document.getElementById('cfg-sb-url').value=ls('sb_url');
+  document.getElementById('cfg-sb-key').value=ls('sb_key');
+  document.getElementById('cfg-g-key').value=ls('g_key');
+  openModal('config-modal');
+}
+
+function saveConfig(){
+  lss('sb_url',document.getElementById('cfg-sb-url').value.trim());
+  lss('sb_key',document.getElementById('cfg-sb-key').value.trim());
+  lss('g_key',document.getElementById('cfg-g-key').value.trim());
+  const u=ls('sb_url'),k=ls('sb_key');
+  if(u&&k) initSupabase(u,k);
+  closeModal('config-modal');
+  toast('Configurações salvas!','✓');
+}
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+
+// ─── EXPORT ──────────────────────────────────────────────────────────────────
+function exportLeads(){
+  if(!allLeads.length){ toast('Nenhum lead para exportar','⚠'); return; }
+  const cols=['name','address','phone','website','rating','reviews_count','score','priority','segment','ai_summary'];
+  const csv=[cols.join(','),...allLeads.map(l=>cols.map(c=>`"${(l[c]||'').toString().replace(/"/g,'""')}"`).join(','))].join('\n');
+  dl('albert-leads-sjc.csv',csv,'text/csv');
+  toast(`${allLeads.length} leads exportados!','✓`);
+}
+
+function exportSingle(){
+  if(!currentLead) return;
+  const cols=['name','address','phone','website','rating','score','priority','segment','ai_summary'];
+  const csv=[cols.join(','),cols.map(c=>`"${(currentLead[c]||'').toString().replace(/"/g,'""')}"`).join(',')].join('\n');
+  dl(`lead-${currentLead.name}.csv`,csv,'text/csv');
+}
+
+function dl(name,content,mime){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([content],{type:mime})); a.download=name; a.click(); }
+
+// ─── LOG / TOAST ──────────────────────────────────────────────────────────────
+function log(type,msg){
+  const el=document.getElementById('agent-log');
+  const t=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const cls=type==='ok'?'log-ok':type==='warn'?'log-warn':'log-info';
+  const ic=type==='ok'?'✓':type==='warn'?'⚠':'→';
+  el.innerHTML+=`<div><span class="log-time">${t}</span><span class="${cls}">${ic} ${msg}</span></div>`;
+  el.scrollTop=el.scrollHeight;
+}
+
+let toastTimer;
+function toast(msg,icon='✓'){
+  const t=document.getElementById('toast');
+  document.getElementById('tm').textContent=msg;
+  document.getElementById('ti').textContent=icon;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
+}
+</script>
+</body>
+</html>
