@@ -1121,9 +1121,8 @@ async function runSearch(bizType,location,radius,lat,lng){
   isRunning=true;
   document.getElementById('agent-panel').style.display='block';
   document.getElementById('agent-log').innerHTML='';
-  document.getElementById('agent-status').textContent='Em execução...';
+  setAgentStatus('running','Em execução...');
   try{
-    const locLabel = lat&&lng ? `${location} (coords: ${lat.toFixed(3)},${lng.toFixed(3)})` : location;
     log('info',`Buscando "${bizType}" em ${location}...`);
     const extra = document.getElementById('extra-prompt')?.value||'';
     const raw = await scoreWithClaude(null,bizType,location,extra,radius,lat,lng);
@@ -1131,22 +1130,32 @@ async function runSearch(bizType,location,radius,lat,lng){
     log('ok',`${scored.length} leads qualificados`);
     const sid=await saveSearch(bizType,location,radius,scored.length);
     await saveLeads(scored,sid);
-    // Marca leads que ja existiam no historico
     const existingIds = new Set(allLeads.map(l=>l.place_id));
     currentSearchLeads = scored.map(l=>({...l, is_new: !existingIds.has(l.place_id)}));
-
-    // Atualiza historico completo sem duplicatas (place_id é chave)
     const updatedMap = new Map(allLeads.map(l=>[l.place_id,l]));
     scored.forEach(l=>updatedMap.set(l.place_id,{...updatedMap.get(l.place_id)||{},...l}));
     allLeads = [...updatedMap.values()].sort((a,b)=>(b.score||0)-(a.score||0));
-
     activeLeadsTab='current';
     switchLeadsTab('current');
     renderLeads();updateStats();renderHistory();
-    document.getElementById('agent-status').textContent='Concluído';
+    setAgentStatus('done',`Concluído — ${scored.length} leads`);
     toast(`${scored.length} leads encontrados!`,'✓');
-  }catch(e){ log('warn','Erro: '+e.message); toast(e.message,'✕'); }
-  isRunning=false;
+  }catch(e){
+    log('warn','Erro: '+e.message);
+    setAgentStatus('error','Erro — '+e.message);
+    toast('Erro na busca','✕');
+  }finally{
+    isRunning=false;
+  }
+}
+
+function setAgentStatus(state, text){
+  const el = document.getElementById('agent-status');
+  if(!el) return;
+  el.textContent = text;
+  el.style.color = state==='done'  ? 'var(--green)'  :
+                   state==='error' ? 'var(--pink)'   :
+                   state==='running'? 'var(--orange)' : 'var(--muted)';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1558,6 +1567,7 @@ window.setLeadStatus   = setLeadStatus;
 window.saveNotes       = saveNotes;
 window.openWhatsApp    = openWhatsApp;
 window.loadDashboard   = loadDashboard;
+window.setAgentStatus  = setAgentStatus;
 window.fetchCNPJ       = fetchCNPJ;
 window.doLogin         = doLogin;
 window.doSignup        = doSignup;
