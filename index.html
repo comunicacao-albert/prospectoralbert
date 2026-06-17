@@ -542,20 +542,38 @@ const ZONES = [
 (async function init(){
   const {data:{session}} = await sb.auth.getSession();
   if(session) await onLogin(session.user);
-  sb.auth.onAuthStateChange((_,session)=>{
-    if(session) onLogin(session.user);
+  else showAuth();
+  sb.auth.onAuthStateChange(async (_,session)=>{
+    if(session) await onLogin(session.user);
     else showAuth();
   });
 })();
 
 async function onLogin(user){
   currentUser = user;
-  // Busca perfil
-  const {data:profile} = await sb.from('profiles').select('*').eq('id',user.id).single();
+
+  // Busca perfil com retry (trigger pode demorar)
+  let profile = null;
+  for(let i=0;i<3;i++){
+    const {data} = await sb.from('profiles').select('*').eq('id',user.id).single();
+    if(data){ profile=data; break; }
+    await new Promise(r=>setTimeout(r,700));
+  }
+
+  // Fallback: cria perfil member se ainda nao existe
+  if(!profile){
+    const {data} = await sb.from('profiles').insert({
+      id: user.id,
+      name: user.user_metadata?.name || user.email.split('@')[0],
+      email: user.email,
+      role: 'member'
+    }).select().single();
+    profile = data;
+  }
+
   currentProfile = profile;
   showApp();
   loadData();
-  renderZones();
   zoneProgress = JSON.parse(localStorage.getItem('zp')||'{}');
   renderZones();
 }
@@ -568,13 +586,22 @@ function showAuth(){
 function showApp(){
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='block';
-  // Configura UI por role
+
   const isAdmin = currentProfile?.role === 'admin';
-  document.getElementById('topbar-user').textContent = currentProfile?.name || currentUser?.email;
-  if(isAdmin){
-    document.getElementById('topbar-role').style.display='inline-flex';
-    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='flex');
-  }
+  const name = currentProfile?.name || currentUser?.email || '';
+
+  document.getElementById('topbar-user').textContent = name;
+
+  // Admin badge
+  document.getElementById('topbar-role').style.display = isAdmin ? 'inline-flex' : 'none';
+
+  // Tab Admin — visivel apenas para admin
+  document.querySelectorAll('.admin-only').forEach(el=>{
+    el.style.display = isAdmin ? 'flex' : 'none';
+  });
+
+  // Pequena confirmacao no console
+  console.log('Login OK — role:', currentProfile?.role);
 }
 
 // ═══════════════════════════════════════════════════════════
