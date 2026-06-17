@@ -1379,7 +1379,8 @@ async function saveNotes(){
     const idx = arr.findIndex(l=>l.place_id===currentLead.place_id);
     if(idx>=0) arr[idx].notes = notes;
   });
-  await sb.from('leads').update({notes}).eq('place_id',currentLead.place_id);
+  const {error:nErr} = await sb.from('leads').update({notes}).eq('place_id',currentLead.place_id);
+  if(nErr) console.warn('Notes save error:', nErr.message);
   toast('Nota salva!','✓');
 }
 
@@ -1447,8 +1448,17 @@ function openLead(ldStr){
           const idx = arr.findIndex(l=>l.place_id===live.place_id);
           if(idx>=0) Object.assign(arr[idx], cnpjData);
         });
-        // Persiste no banco
-        await sb.from('leads').update(cnpjData).eq('place_id',live.place_id);
+        // Persiste no banco — só campos que existem na tabela
+        const toSave = {};
+        if(cnpjData.cnpj)          toSave.cnpj          = cnpjData.cnpj;
+        if(cnpjData.cnpj_status)   toSave.cnpj_status   = cnpjData.cnpj_status;
+        if(cnpjData.cnpj_porte)    toSave.cnpj_porte    = cnpjData.cnpj_porte;
+        if(cnpjData.cnpj_abertura) toSave.cnpj_abertura = cnpjData.cnpj_abertura;
+        if(cnpjData.socios)        toSave.socios        = cnpjData.socios;
+        if(Object.keys(toSave).length > 0){
+          const {error:pErr} = await sb.from('leads').update(toSave).eq('place_id',live.place_id);
+          if(pErr) console.warn('CNPJ save error:', pErr.message);
+        }
         // Re-renderiza grid do modal com novos dados
         const sociosList = cnpjData.socios?.map(s=>s.nome).join(', ')||'–';
         const cnpjEl = document.querySelector('#m-grid .di:nth-child(9) span');
@@ -1510,7 +1520,8 @@ async function setLeadStatus(status, el){
   // Update row in table
   renderLeads();
   const oldStatus = currentLead.status || 'novo';
-  await sb.from('leads').update({status}).eq('place_id',currentLead.place_id);
+  const {error:sErr} = await sb.from('leads').update({status}).eq('place_id',currentLead.place_id);
+  if(sErr) console.warn('Status save error:', sErr.message);
   // Track activity
   const leadDbId = allLeads.find(l=>l.place_id===currentLead.place_id)?.id;
   if(leadDbId) trackActivity(leadDbId, currentLead.name, 'status_change', oldStatus, status);
