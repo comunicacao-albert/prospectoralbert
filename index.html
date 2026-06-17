@@ -863,7 +863,6 @@ async function runManual(){
   const loc=document.getElementById('location').value.trim();
   const rad=document.getElementById('radius').value;
   if(!biz||!loc){ toast('Preencha tipo e cidade','⚠'); return; }
-  if(!GOOGLE_KEY){ toast('Configure a Google Maps Key no código','⚠'); return; }
   await runSearch(biz,loc,rad,null,null);
 }
 
@@ -872,27 +871,14 @@ async function runManual(){
 // ═══════════════════════════════════════════════════════════
 async function runSearch(bizType,location,radius,lat,lng){
   if(isRunning){ log('warn','Busca em andamento...'); return; }
-  if(!GOOGLE_KEY){ log('warn','Google Maps Key não configurada no código'); return; }
   isRunning=true;
   document.getElementById('agent-panel').style.display='block';
   document.getElementById('agent-log').innerHTML='';
   document.getElementById('agent-status').textContent='Em execução...';
   try{
-    log('info',`Buscando "${bizType}" em ${location}`);
-    let geo=lat&&lng?{lat,lng}:await geocode(location);
-    if(!geo) throw new Error('Geocodificação falhou');
-    log('ok',`${geo.lat.toFixed(4)}, ${geo.lng.toFixed(4)}`);
-    const places=await searchPlaces(bizType,geo,radius);
-    log('ok',`${places.length} lugares encontrados`);
-    const detailed=[];
-    for(let i=0;i<Math.min(places.length,12);i++){
-      const d=await getDetails(places[i].place_id);
-      if(d) detailed.push(d);
-    }
-    log('ok',`${detailed.length} detalhes coletados`);
-    if(!detailed.length){isRunning=false;return;}
-    log('info','Enviando para Claude via Edge Function...');
-    const scored=await scoreWithClaude(detailed,bizType,location,document.getElementById('extra-prompt')?.value||'');
+    log('info',`Buscando "${bizType}" em ${location}...`);
+    const extra = document.getElementById('extra-prompt')?.value||'';
+    const scored = await scoreWithClaude(null,bizType,location,extra,radius,lat,lng);
     log('ok',`${scored.length} leads qualificados`);
     const sid=await saveSearch(bizType,location,radius,scored.length);
     await saveLeads(scored,sid);
@@ -928,14 +914,18 @@ async function getDetails(placeId){
 // ═══════════════════════════════════════════════════════════
 // CLAUDE via Edge Function
 // ═══════════════════════════════════════════════════════════
-async function scoreWithClaude(places,bizType,location,extra){
-  const payload=places.map(p=>({place_id:p.place_id,name:p.name,address:p.formatted_address,phone:p.formatted_phone_number,website:p.website,rating:p.rating,reviews:p.user_ratings_total,types:p.types?.slice(0,4),status:p.business_status}));
+async function scoreWithClaude(places,bizType,location,extra,radius=5000,lat=null,lng=null){
+  const body={bizType,location,extra,radius};
+  if(lat&&lng){body.lat=lat;body.lng=lng;}
   const r=await fetch(`${SB_URL}/functions/v1/clever-hand`,{
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
-    body:JSON.stringify({places:payload,bizType,location,extra})
+    body:JSON.stringify(body)
   });
-  if(!r.ok) throw new Error(`Edge Function ${r.status}`);
+  if(!r.ok){
+    const err=await r.text();
+    throw new Error(`Edge Function ${r.status}: ${err}`);
+  }
   const data=await r.json();
   if(data.error) throw new Error(data.error);
   return data.leads||[];
