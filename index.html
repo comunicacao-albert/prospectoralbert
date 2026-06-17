@@ -1395,6 +1395,7 @@ function openLead(ldStr){
   const st = live.status||'novo';
   const sociosList = live.socios?.map((s)=>s.nome).join(', ') || '–';
   const networkBadge = live.network_name ? `<span style="background:rgba(124,58,237,.1);color:#7c3aed;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px">${live.network_units} unidades</span>` : '';
+  const cnpjValue = live.cnpj && live.cnpj !== 'Não encontrado' ? live.cnpj : '';
   document.getElementById('m-grid').innerHTML=[
     ['Endereço',live.address||'–'],
     ['Telefone',live.phone||'–'],
@@ -1404,11 +1405,20 @@ function openLead(ldStr){
     ['Avaliação',live.rating?`★ ${live.rating} (${live.reviews_count||0})`:'–'],
     ['Score',`${live.score||0}/100`],
     ['Segmento',(live.segment||'–')+(networkBadge)],
-    ['CNPJ',live.cnpj||'–'],
-    ['Status CNPJ',live.cnpj_status||'–'],
-    ['Porte',live.cnpj_porte||'–'],
-    ['Decisor(es)',sociosList],
-  ].map(([k,v])=>`<div class="di"><label>${k}</label><span>${v}</span></div>`).join('');
+  ].map(([k,v])=>`<div class="di"><label>${k}</label><span>${v}</span></div>`).join('') +
+  `<div class="di" style="grid-column:1/-1">
+    <label>CNPJ</label>
+    <div style="display:flex;gap:6px;align-items:center">
+      <input id="cnpj-input" type="text" placeholder="00.000.000/0001-00" value="${cnpjValue}"
+        style="flex:1;font-size:13px;padding:5px 8px;border-radius:6px;border:1.5px solid var(--border);font-family:monospace"
+        oninput="this.value=this.value.replace(/[^\d]/g,'').replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5').substring(0,18)"
+        onkeydown="if(event.key==='Enter')lookupCNPJ()">
+      <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="lookupCNPJ()">🔍 Buscar</button>
+    </div>
+  </div>
+  <div class="di"><label>Status CNPJ</label><span id="cnpj-status-val">${live.cnpj_status||'–'}</span></div>
+  <div class="di"><label>Porte</label><span id="cnpj-porte-val">${live.cnpj_porte||'–'}</span></div>
+  <div class="di" style="grid-column:1/-1"><label>Decisor(es)</label><span id="cnpj-socios-val">${sociosList}</span></div>`;
 
   // Status selector
   document.getElementById('modal-status-row').innerHTML = `
@@ -1432,54 +1442,76 @@ function openLead(ldStr){
   }
   openModal('lead-modal');
 
-  // Busca CNPJ sob demanda (não bloqueia abertura do modal)
-  if(!live.cnpj && live.name){
-    // Mostra loading nos campos de CNPJ
-    const cnpjEls = document.querySelectorAll('#m-grid .di span');
-    if(cnpjEls[8]) cnpjEls[8].textContent = 'Buscando...';
-    if(cnpjEls[9]) cnpjEls[9].textContent = '...';
 
-    document.getElementById('m-grid').querySelectorAll && setTimeout(async()=>{
-      const cnpjData = await fetchCNPJ(live.name);
-      if(cnpjData && currentLead?.place_id === live.place_id){
-        // Atualiza lead no estado
-        Object.assign(currentLead, cnpjData);
-        [allLeads, currentSearchLeads].forEach(arr=>{
-          const idx = arr.findIndex(l=>l.place_id===live.place_id);
-          if(idx>=0) Object.assign(arr[idx], cnpjData);
-        });
-        // Persiste no banco — só campos válidos (nunca salva "–" ou strings vazias)
-        const clean = v => (v && v !== '–' && v !== '-' && v !== '') ? v : null;
-        const toSave = {};
-        if(clean(cnpjData.cnpj))          toSave.cnpj        = clean(cnpjData.cnpj);
-        if(clean(cnpjData.cnpj_status))   toSave.cnpj_status = clean(cnpjData.cnpj_status);
-        if(clean(cnpjData.cnpj_porte))    toSave.cnpj_porte  = clean(cnpjData.cnpj_porte);
-        // cnpj_abertura é TEXT não DATE — salva como string
-        if(clean(cnpjData.cnpj_abertura)) toSave.cnpj_abertura = clean(cnpjData.cnpj_abertura);
-        if(cnpjData.socios?.length)       toSave.socios      = cnpjData.socios;
-        if(Object.keys(toSave).length > 0){
-          const {error:pErr} = await sb.from('leads').update(toSave).eq('place_id',live.place_id);
-          if(pErr) console.warn('CNPJ save error:', pErr.message);
-        }
-        // Re-renderiza grid do modal com novos dados
-        const sociosList = cnpjData.socios?.map(s=>s.nome).join(', ')||'–';
-        const cnpjEl = document.querySelector('#m-grid .di:nth-child(9) span');
-        const statusEl = document.querySelector('#m-grid .di:nth-child(10) span');
-        const porteEl = document.querySelector('#m-grid .di:nth-child(11) span');
-        const sociosEl = document.querySelector('#m-grid .di:nth-child(12) span');
-        if(cnpjEl) cnpjEl.textContent = cnpjData.cnpj||'–';
-        if(statusEl){
-          statusEl.textContent = cnpjData.cnpj_status||'–';
-          statusEl.style.color = cnpjData.cnpj_status==='ATIVA'?'var(--green)':
-                                  cnpjData.cnpj_status==='–'?'var(--muted)':'var(--orange)';
-        }
-        if(porteEl) porteEl.textContent = cnpjData.cnpj_porte||'–';
-        if(sociosEl){ sociosEl.textContent = sociosList; sociosEl.style.fontWeight='700'; }
-        if(cnpjData.cnpj && cnpjData.cnpj !== 'Não encontrado'){
-          toast('CNPJ encontrado: '+cnpjData.cnpj,'✓');
-        }
+}
+
+async function lookupCNPJ(){
+  const input = document.getElementById('cnpj-input');
+  if(!input) return;
+  const cnpj = input.value.replace(/[^\d]/g,'');
+  if(cnpj.length !== 14){ toast('CNPJ deve ter 14 dígitos','⚠'); return; }
+
+  // Feedback visual
+  const btn = input.nextElementSibling;
+  const origText = btn.textContent;
+  btn.textContent = '⏳ Buscando...';
+  btn.disabled = true;
+  document.getElementById('cnpj-status-val').textContent = '...';
+
+  try{
+    const r = await fetch(`${SB_URL}/functions/v1/clever-handler`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
+      body:JSON.stringify({action:'cnpj_by_number',cnpj})
+    });
+
+    if(!r.ok){
+      toast('CNPJ não encontrado na Receita','⚠');
+      document.getElementById('cnpj-status-val').textContent = 'Não encontrado';
+      return;
+    }
+
+    const d = await r.json();
+    if(d.error){ toast('Erro ao buscar CNPJ','✕'); return; }
+
+    // Atualiza modal
+    input.value = d.cnpj || input.value;
+    document.getElementById('cnpj-status-val').textContent = d.cnpj_status||'–';
+    document.getElementById('cnpj-status-val').style.color =
+      d.cnpj_status==='ATIVA' ? 'var(--green)' : d.cnpj_status ? 'var(--orange)' : '';
+    document.getElementById('cnpj-porte-val').textContent = d.cnpj_porte||'–';
+    const socios = d.socios?.map(s=>s.nome).join(', ')||'–';
+    document.getElementById('cnpj-socios-val').textContent = socios;
+    document.getElementById('cnpj-socios-val').style.fontWeight = d.socios?.length ? '700' : '';
+
+    // Salva no estado e banco
+    if(currentLead){
+      Object.assign(currentLead, d);
+      [allLeads, currentSearchLeads].forEach(arr=>{
+        const idx = arr.findIndex(l=>l.place_id===currentLead.place_id);
+        if(idx>=0) Object.assign(arr[idx], d);
+      });
+      const clean = v => (v && v !== '–' && v !== '') ? v : null;
+      const toSave = {};
+      if(clean(d.cnpj))          toSave.cnpj          = clean(d.cnpj);
+      if(clean(d.cnpj_status))   toSave.cnpj_status   = clean(d.cnpj_status);
+      if(clean(d.cnpj_porte))    toSave.cnpj_porte    = clean(d.cnpj_porte);
+      if(clean(d.cnpj_abertura)) toSave.cnpj_abertura = clean(d.cnpj_abertura);
+      if(d.socios?.length)       toSave.socios        = d.socios;
+      if(Object.keys(toSave).length > 0){
+        await sb.from('leads').update(toSave).eq('place_id',currentLead.place_id);
       }
-    }, 300);
+      // Atualiza badge na tabela
+      renderLeads();
+    }
+
+    toast(d.cnpj_status==='ATIVA' ? `CNPJ ativo — ${d.cnpj}` : `CNPJ: ${d.cnpj_status||'encontrado'}`,'✓');
+  }catch(e){
+    toast('Erro na busca','✕');
+    console.warn('lookupCNPJ error:', e);
+  }finally{
+    btn.textContent = origText;
+    btn.disabled = false;
   }
 }
 
@@ -1588,6 +1620,7 @@ window.openWhatsApp    = openWhatsApp;
 window.loadDashboard   = loadDashboard;
 window.setAgentStatus  = setAgentStatus;
 window.fetchCNPJ       = fetchCNPJ;
+window.lookupCNPJ      = lookupCNPJ;
 window.doLogin         = doLogin;
 window.doSignup        = doSignup;
 window.doLogout        = doLogout;
