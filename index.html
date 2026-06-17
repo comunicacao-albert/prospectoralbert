@@ -875,7 +875,8 @@ async function loadDashboard(){
   const byZone = {};
   allLeads.forEach(l=>{
     const addr = l.address||'';
-    const city = addr.split(',').slice(-3,-2)[0]?.trim()||'Outros';
+    const stateM = addr.match(/,\s*([^,]+)\s*-\s*[A-Z]{2},/);
+    const city = stateM ? stateM[1].trim() : (addr.split(',').slice(-3,-2)[0]?.trim()||'Outros');
     if(!byZone[city]) byZone[city]={city,total:0,hot:0,fechados:0,scores:[]};
     byZone[city].total++;
     if(l.priority==='hot') byZone[city].hot++;
@@ -1238,9 +1239,15 @@ function updateCityFilter(){
   if(!sel) return;
   const leads = activeLeadsTab==='current' ? currentSearchLeads : allLeads;
   const cities = [...new Set(leads.map(l=>{
-    const parts = (l.address||'').split(',');
-    return parts.length>1 ? parts[parts.length-2].trim() : '';
-  }).filter(Boolean))].sort();
+    const addr = l.address||'';
+    // Formato BR: "Rua X, 123 - Bairro, Cidade - SP, CEP, Brasil"
+    // Extrai a cidade antes do estado (- SP, - RJ, etc)
+    const stateMatch = addr.match(/,\s*([^,]+)\s*-\s*[A-Z]{2},/);
+    if(stateMatch) return stateMatch[1].trim();
+    // Fallback: penúltima parte separada por vírgula
+    const parts = addr.split(',');
+    return parts.length>2 ? parts[parts.length-3].trim() : '';
+  }).filter(c=>c && c.length>2 && !/^\d/.test(c)))].sort();
   const current = sel.value;
   sel.innerHTML = '<option value="">Todas as cidades</option>' + cities.map(c=>`<option value="${c}">${c}</option>`).join('');
   if(current) sel.value = current;
