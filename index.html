@@ -1411,8 +1411,9 @@ function openLead(ldStr){
     <div style="display:flex;gap:6px;align-items:center">
       <input id="cnpj-input" type="text" placeholder="00.000.000/0001-00" value="${cnpjValue}"
         style="flex:1;font-size:13px;padding:5px 8px;border-radius:6px;border:1.5px solid var(--border);font-family:monospace"
-        oninput="this.value=this.value.replace(/[^\d]/g,'').replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5').substring(0,18)"
-        onkeydown="if(event.key==='Enter')lookupCNPJ()">
+        onkeydown="if(event.key==='Enter')lookupCNPJ()"
+        onblur="formatCNPJInput(this)"
+        onpaste="setTimeout(()=>formatCNPJInput(this),10)">
       <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="lookupCNPJ()">🔍 Buscar</button>
     </div>
   </div>
@@ -1443,6 +1444,13 @@ function openLead(ldStr){
   openModal('lead-modal');
 
 
+}
+
+function formatCNPJInput(el){
+  const digits = el.value.replace(/[^\d]/g,'');
+  if(digits.length === 14){
+    el.value = digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5');
+  }
 }
 
 async function lookupCNPJ(){
@@ -1621,6 +1629,7 @@ window.loadDashboard   = loadDashboard;
 window.setAgentStatus  = setAgentStatus;
 window.fetchCNPJ       = fetchCNPJ;
 window.lookupCNPJ      = lookupCNPJ;
+window.formatCNPJInput = formatCNPJInput;
 window.doLogin         = doLogin;
 window.doSignup        = doSignup;
 window.doLogout        = doLogout;
