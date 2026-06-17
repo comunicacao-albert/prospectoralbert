@@ -241,6 +241,8 @@ hr{border:none;border-top:1px solid var(--border)}
 .toast{position:fixed;bottom:20px;right:20px;z-index:300;background:#fff;border:1px solid var(--border);border-radius:9px;padding:10px 14px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:7px;transform:translateY(12px);opacity:0;transition:all .25s;pointer-events:none;max-width:300px;box-shadow:var(--shadow);border-left:3px solid var(--pink);color:var(--text)}
 .toast.show{transform:translateY(0);opacity:1}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+  .btn-whatsapp{background:#25d366;color:#fff;border:none}
+  .btn-whatsapp:hover{background:#1da851}
   /* Status badges */
   .status-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:all .14s;white-space:nowrap}
   .status-novo{background:#f5f5f5;color:var(--muted);border-color:var(--border)}
@@ -332,6 +334,7 @@ hr{border:none;border-top:1px solid var(--border)}
 
     <div class="topbar-nav">
       <button class="nav-tab active" onclick="showPanel('leads')" id="tab-leads">Leads</button>
+      <button class="nav-tab admin-only" onclick="showPanel('dashboard')" id="tab-dashboard">📊 Dashboard</button>
       <button class="nav-tab admin-only" onclick="showPanel('admin')" id="tab-admin">⚙ Admin</button>
     </div>
 
@@ -466,6 +469,70 @@ hr{border:none;border-top:1px solid var(--border)}
     </div>
   </div>
 
+  <!-- DASHBOARD PANEL -->
+  <div id="dashboard-panel" style="display:none">
+    <div class="admin-main">
+
+      <!-- KPIs do time -->
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+        <div class="stat-card"><div class="stat-value v-pink" id="d-total">–</div><div class="stat-label">Total prospectados</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:#2563eb" id="d-contatados">–</div><div class="stat-label">Contatados</div></div>
+        <div class="stat-card"><div class="stat-value v-orange" id="d-negociando">–</div><div class="stat-label">Em negociação</div></div>
+        <div class="stat-card"><div class="stat-value v-green" id="d-fechados">–</div><div class="stat-label">Fechados</div></div>
+        <div class="stat-card"><div class="stat-value v-pink" id="d-conversao">–%</div><div class="stat-label">Taxa de conversão</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <!-- Performance por usuário -->
+        <div class="section-card">
+          <div class="section-card-header"><h3>Performance por SDR</h3></div>
+          <div class="section-card-body" style="padding:0">
+            <table class="users-table" style="width:100%">
+              <thead><tr><th>SDR</th><th>Contatados</th><th>Negociando</th><th>Fechados</th><th>Conversão</th><th>Última ação</th></tr></thead>
+              <tbody id="d-users-tbody"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Carregando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Performance por segmento -->
+        <div class="section-card">
+          <div class="section-card-header"><h3>Performance por segmento</h3></div>
+          <div class="section-card-body" style="padding:0">
+            <table class="users-table" style="width:100%">
+              <thead><tr><th>Segmento</th><th>Leads</th><th>HOT</th><th>Fechados</th><th>Score médio</th></tr></thead>
+              <tbody id="d-seg-tbody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Carregando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Redes detectadas -->
+      <div class="section-card">
+        <div class="section-card-header"><h3>Redes detectadas</h3><span style="font-size:12px;color:var(--muted)">Estabelecimentos com múltiplas unidades</span></div>
+        <div class="section-card-body" style="padding:0">
+          <table class="users-table" style="width:100%">
+            <thead><tr><th>Rede</th><th>Unidades</th><th>Segmento</th><th>Score médio</th><th>Melhor lead</th></tr></thead>
+            <tbody id="d-networks-tbody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Carregando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Performance por zona -->
+      <div class="section-card">
+        <div class="section-card-header"><h3>Performance por zona</h3></div>
+        <div class="section-card-body" style="padding:0">
+          <table class="users-table" style="width:100%">
+            <thead><tr><th>Zona</th><th>Leads</th><th>HOT</th><th>Fechados</th><th>Score médio</th></tr></thead>
+            <tbody id="d-zone-tbody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Carregando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </div><!-- /#app -->
 
 <!-- LEAD MODAL -->
@@ -486,6 +553,7 @@ hr{border:none;border-top:1px solid var(--border)}
     </div>
     <div class="mf">
       <button class="btn btn-primary" onclick="saveNotes()">Salvar nota</button>
+      <button class="btn btn-whatsapp" id="modal-wa-btn" onclick="openWhatsApp()" style="display:none">💬 WhatsApp</button>
       <button class="btn btn-ghost" onclick="exportSingle()">Exportar</button>
       <button class="btn btn-ghost" onclick="closeModal('lead-modal')">Fechar</button>
     </div>
@@ -699,15 +767,147 @@ async function doLogout(){
   showAuth();
 }
 
+// ── Activity tracking ─────────────────────────────────────
+async function trackActivity(leadId, leadName, action, fromStatus, toStatus){
+  try{
+    await sb.from('activities').insert({
+      user_id: currentUser?.id,
+      user_name: currentProfile?.name || currentUser?.email,
+      lead_id: leadId,
+      lead_name: leadName,
+      action,
+      from_status: fromStatus||null,
+      to_status: toStatus||null,
+    });
+  }catch(e){ console.warn('activity track fail',e); }
+}
+
+// ── Dashboard ─────────────────────────────────────────────
+async function loadDashboard(){
+  if(currentProfile?.role!=='admin') return;
+
+  // KPIs gerais a partir dos leads
+  const total      = allLeads.filter(l=>l.status && l.status!=='novo').length;
+  const contatados = allLeads.filter(l=>l.status==='contatado').length;
+  const negociando = allLeads.filter(l=>l.status==='negociando').length;
+  const fechados   = allLeads.filter(l=>l.status==='fechado').length;
+  const perdidos   = allLeads.filter(l=>l.status==='sem_interesse').length;
+  const conversao  = fechados+perdidos>0 ? Math.round(fechados/(fechados+perdidos)*100) : 0;
+
+  document.getElementById('d-total').textContent     = total;
+  document.getElementById('d-contatados').textContent= contatados;
+  document.getElementById('d-negociando').textContent= negociando;
+  document.getElementById('d-fechados').textContent  = fechados;
+  document.getElementById('d-conversao').textContent = conversao+'%';
+
+  // Performance por usuário via activities
+  try{
+    const {data:acts} = await sb.from('activities').select('*').eq('action','status_change').order('created_at',{ascending:false});
+    if(acts){
+      const byUser = {};
+      acts.forEach(a=>{
+        if(!byUser[a.user_name]) byUser[a.user_name]={name:a.user_name,contatados:0,negociando:0,fechados:0,perdidos:0,ultima:a.created_at};
+        if(a.to_status==='contatado')    byUser[a.user_name].contatados++;
+        if(a.to_status==='negociando')   byUser[a.user_name].negociando++;
+        if(a.to_status==='fechado')      byUser[a.user_name].fechados++;
+        if(a.to_status==='sem_interesse')byUser[a.user_name].perdidos++;
+        if(a.created_at > byUser[a.user_name].ultima) byUser[a.user_name].ultima=a.created_at;
+      });
+      const tbody = document.getElementById('d-users-tbody');
+      const rows = Object.values(byUser);
+      tbody.innerHTML = rows.length ? rows.map((u)=>{
+        const conv = u.fechados+u.perdidos>0?Math.round(u.fechados/(u.fechados+u.perdidos)*100):0;
+        return `<tr>
+          <td style="font-weight:600">${u.name}</td>
+          <td style="color:#2563eb;font-weight:600">${u.contatados}</td>
+          <td style="color:var(--orange);font-weight:600">${u.negociando}</td>
+          <td style="color:var(--green);font-weight:600">${u.fechados}</td>
+          <td><span style="font-weight:700;color:${conv>=50?'var(--green)':'var(--muted)'}">${conv}%</span></td>
+          <td style="color:var(--muted);font-size:11px">${new Date(u.ultima).toLocaleDateString('pt-BR')}</td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">Nenhuma atividade registrada ainda.</td></tr>';
+    }
+  }catch(e){ console.warn(e); }
+
+  // Performance por segmento (calculado localmente)
+  const bySegment = {};
+  allLeads.forEach(l=>{
+    const seg = l.segment||'Outros';
+    if(!bySegment[seg]) bySegment[seg]={seg,total:0,hot:0,fechados:0,scores:[]};
+    bySegment[seg].total++;
+    if(l.priority==='hot') bySegment[seg].hot++;
+    if(l.status==='fechado') bySegment[seg].fechados++;
+    if(l.score) bySegment[seg].scores.push(l.score);
+  });
+  const segRows = Object.values(bySegment).sort((a,b)=>b.total-a.total);
+  document.getElementById('d-seg-tbody').innerHTML = segRows.length ? segRows.map((s)=>{
+    const avg = s.scores.length ? Math.round(s.scores.reduce((a,b)=>a+b,0)/s.scores.length) : 0;
+    return `<tr>
+      <td style="font-weight:600">${s.seg}</td>
+      <td>${s.total}</td>
+      <td style="color:var(--pink);font-weight:600">${s.hot}</td>
+      <td style="color:var(--green);font-weight:600">${s.fechados}</td>
+      <td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="height:100%;width:${avg}%;background:var(--pink);border-radius:2px"></div></div><span style="font-size:11px">${avg}</span></div></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Nenhum dado.</td></tr>';
+
+  // Redes detectadas
+  const networks = {};
+  allLeads.filter(l=>l.network_id).forEach(l=>{
+    if(!networks[l.network_id]) networks[l.network_id]={name:l.network_name,units:0,seg:l.segment,scores:[],bestScore:0,bestName:''};
+    networks[l.network_id].units++;
+    if(l.score) networks[l.network_id].scores.push(l.score);
+    if((l.score||0)>networks[l.network_id].bestScore){networks[l.network_id].bestScore=l.score;networks[l.network_id].bestName=l.name;}
+  });
+  const netRows = Object.values(networks).sort((a,b)=>b.units-a.units);
+  document.getElementById('d-networks-tbody').innerHTML = netRows.length ? netRows.map((n)=>{
+    const avg = n.scores.length?Math.round(n.scores.reduce((a,b)=>a+b,0)/n.scores.length):0;
+    return `<tr>
+      <td style="font-weight:700">${n.name}</td>
+      <td><span style="background:rgba(124,58,237,.1);color:#7c3aed;padding:2px 8px;border-radius:10px;font-weight:700">${n.units} unidades</span></td>
+      <td style="color:var(--muted)">${n.seg||'–'}</td>
+      <td>${avg}</td>
+      <td style="font-size:11px;color:var(--muted)">${n.bestName}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Nenhuma rede detectada ainda. Faça mais buscas para identificar múltiplas unidades.</td></tr>';
+
+  // Performance por zona
+  const byZone = {};
+  allLeads.forEach(l=>{
+    const addr = l.address||'';
+    const city = addr.split(',').slice(-3,-2)[0]?.trim()||'Outros';
+    if(!byZone[city]) byZone[city]={city,total:0,hot:0,fechados:0,scores:[]};
+    byZone[city].total++;
+    if(l.priority==='hot') byZone[city].hot++;
+    if(l.status==='fechado') byZone[city].fechados++;
+    if(l.score) byZone[city].scores.push(l.score);
+  });
+  const zoneRows = Object.values(byZone).sort((a,b)=>b.total-a.total).slice(0,10);
+  document.getElementById('d-zone-tbody').innerHTML = zoneRows.length ? zoneRows.map((z)=>{
+    const avg = z.scores.length?Math.round(z.scores.reduce((a,b)=>a+b,0)/z.scores.length):0;
+    return `<tr>
+      <td style="font-weight:600">${z.city}</td>
+      <td>${z.total}</td>
+      <td style="color:var(--pink);font-weight:600">${z.hot}</td>
+      <td style="color:var(--green);font-weight:600">${z.fechados}</td>
+      <td>${avg}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Nenhum dado.</td></tr>';
+}
+
 // ═══════════════════════════════════════════════════════════
 // PANELS NAV
 // ═══════════════════════════════════════════════════════════
 function showPanel(panel){
-  document.getElementById('leads-panel').style.display = panel==='leads'?'block':'none';
-  document.getElementById('admin-panel').style.display  = panel==='admin'?'block':'none';
-  document.getElementById('tab-leads').classList.toggle('active',panel==='leads');
-  document.getElementById('tab-admin').classList.toggle('active',panel==='admin');
+  document.getElementById('leads-panel').style.display     = panel==='leads'?'block':'none';
+  document.getElementById('admin-panel').style.display     = panel==='admin'?'block':'none';
+  document.getElementById('dashboard-panel').style.display = panel==='dashboard'?'block':'none';
+  ['leads','admin','dashboard'].forEach(p=>{
+    const el = document.getElementById('tab-'+p);
+    if(el) el.classList.toggle('active', p===panel);
+  });
   if(panel==='admin') loadAdminData();
+  if(panel==='dashboard') loadDashboard();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1089,6 +1289,8 @@ function renderLeads(){
       l.instagram ? '📸' : '',
       l.email ? '✉' : '',
     ].filter(Boolean).join(' ');
+    const waNumber = l.phone ? l.phone.replace(/[^\d]/g,'').replace(/^0/,'55').replace(/^([^5])/,'55$1') : null;
+    const waBtn = waNumber ? `<span onclick="event.stopPropagation();window.open('https://wa.me/${waNumber}','_blank')" title="Abrir WhatsApp" style="cursor:pointer;font-size:16px;margin-left:4px" aria-label="WhatsApp">💬</span>` : '';
     const st = l.status||'novo';
     const stLabels = {novo:'Novo',contatado:'Contatado',negociando:'Negociando',fechado:'Fechado',sem_interesse:'Sem interesse'};
     const stIcons  = {novo:'○',contatado:'◉',negociando:'◈',fechado:'✓',sem_interesse:'✕'};
@@ -1096,11 +1298,11 @@ function renderLeads(){
     const stIcon   = stIcons[st]||'○';
     return `<div class="lead-row status-${st}" style="grid-template-columns:2fr 1.2fr 1fr .8fr .6fr .6fr .7fr" onclick='openLead(decodeURIComponent("${ld}"))'>
       <div>
-        <div class="lead-name">${l.name||'–'}${activeLeadsTab==='current'&&l.is_new===false?'<span style="margin-left:6px;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;background:#f0f0f0;color:var(--muted2)">Já no histórico</span>':''}</div>
-        <div style="font-size:10px;color:var(--muted)">${l.segment||'–'}</div>
+        <div class="lead-name">${l.name||'–'}${activeLeadsTab==='current'&&l.is_new===false?'<span style="margin-left:6px;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;background:#f0f0f0;color:var(--muted2)">Já no histórico</span>':''}${l.network_name?`<span style="margin-left:5px;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;background:rgba(124,58,237,.1);color:#7c3aed">${l.network_units}x</span>`:''}</div>
+        <div style="font-size:10px;color:var(--muted)">${l.segment||'–'}${l.cnpj_status==='ATIVA'?'<span style="margin-left:4px;color:var(--green);font-size:9px">● CNPJ ativo</span>':l.cnpj_status?`<span style="margin-left:4px;color:var(--orange);font-size:9px">● ${l.cnpj_status}</span>`:''}</div>
       </div>
       <div class="lc" style="font-size:10px">${addr}</div>
-      <div class="lc" style="font-size:13px;letter-spacing:2px">${contacts||'–'}</div>
+      <div class="lc" style="font-size:13px;letter-spacing:2px;display:flex;align-items:center;gap:2px">${contacts||'–'}${waBtn}</div>
       <div class="lc">${l.rating?'★ '+l.rating:'–'}</div>
       <div><div style="font-size:11px;font-weight:600">${score}</div><div class="score-bar"><div class="score-fill" style="width:${score}%"></div></div></div>
       <div><span class="tag ${tc}" style="font-size:10px;padding:2px 7px">${tl}</span></div>
@@ -1174,6 +1376,8 @@ function openLead(ldStr){
   document.getElementById('m-summary').textContent = live.ai_summary||'–';
 
   const st = live.status||'novo';
+  const sociosList = live.socios?.map((s)=>s.nome).join(', ') || '–';
+  const networkBadge = live.network_name ? `<span style="background:rgba(124,58,237,.1);color:#7c3aed;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px">${live.network_units} unidades</span>` : '';
   document.getElementById('m-grid').innerHTML=[
     ['Endereço',live.address||'–'],
     ['Telefone',live.phone||'–'],
@@ -1182,7 +1386,11 @@ function openLead(ldStr){
     ['Instagram',live.instagram?`<a href="${live.instagram}" target="_blank">${live.instagram}</a>`:'–'],
     ['Avaliação',live.rating?`★ ${live.rating} (${live.reviews_count||0})`:'–'],
     ['Score',`${live.score||0}/100`],
-    ['Segmento',live.segment||'–'],
+    ['Segmento',(live.segment||'–')+(networkBadge)],
+    ['CNPJ',live.cnpj||'–'],
+    ['Status CNPJ',live.cnpj_status||'–'],
+    ['Porte',live.cnpj_porte||'–'],
+    ['Decisor(es)',sociosList],
   ].map(([k,v])=>`<div class="di"><label>${k}</label><span>${v}</span></div>`).join('');
 
   // Status selector
@@ -1193,7 +1401,25 @@ function openLead(ldStr){
 
   // Notes
   document.getElementById('lead-notes').value = live.notes||'';
+  // WhatsApp button
+  const waBtn2 = document.getElementById('modal-wa-btn');
+  if(waBtn2){
+    const phone = live.phone;
+    if(phone){
+      const num = phone.replace(/[^\d]/g,'').replace(/^0/,'55').replace(/^([^5])/,'55$1');
+      waBtn2.style.display = 'flex';
+      waBtn2.onclick = () => window.open(`https://wa.me/${num}`,'_blank');
+    } else {
+      waBtn2.style.display = 'none';
+    }
+  }
   openModal('lead-modal');
+}
+
+function openWhatsApp(){
+  if(!currentLead?.phone) return;
+  const num = currentLead.phone.replace(/[^\d]/g,'').replace(/^0/,'55').replace(/^([^5])/,'55$1');
+  window.open(`https://wa.me/${num}`,'_blank');
 }
 
 async function setLeadStatus(status, el){
@@ -1209,7 +1435,11 @@ async function setLeadStatus(status, el){
   });
   // Update row in table
   renderLeads();
+  const oldStatus = currentLead.status || 'novo';
   await sb.from('leads').update({status}).eq('place_id',currentLead.place_id);
+  // Track activity
+  const leadDbId = allLeads.find(l=>l.place_id===currentLead.place_id)?.id;
+  if(leadDbId) trackActivity(leadDbId, currentLead.name, 'status_change', oldStatus, status);
   toast(`Status: ${STATUS_LABELS[status]}`,'✓');
 }
 
@@ -1267,6 +1497,8 @@ window.dedupByPlaceId  = dedupByPlaceId;
 window.cycleStatus     = cycleStatus;
 window.setLeadStatus   = setLeadStatus;
 window.saveNotes       = saveNotes;
+window.openWhatsApp    = openWhatsApp;
+window.loadDashboard   = loadDashboard;
 window.doLogin         = doLogin;
 window.doSignup        = doSignup;
 window.doLogout        = doLogout;
