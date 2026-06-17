@@ -387,16 +387,22 @@ hr{border:none;border-top:1px solid var(--border)}
           <div class="agent-log" id="agent-log"></div>
         </div>
         <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px">
-            <div style="font-size:15px;font-weight:800;letter-spacing:-.3px">Leads ICP albert <span id="leads-count" style="color:var(--muted);font-weight:500;font-size:12px"></span></div>
-            <div style="display:flex;gap:6px">
-              <select style="width:150px;font-size:12px" id="sort-sel" onchange="renderLeads()">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-ghost" id="tab-current" onclick="switchLeadsTab('current')" style="font-size:12px;padding:5px 12px;background:var(--pink);color:#fff;border-color:var(--pink)">Atual</button>
+              <button class="btn btn-ghost" id="tab-history" onclick="switchLeadsTab('history')" style="font-size:12px;padding:5px 12px">Histórico</button>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <select style="width:150px;font-size:12px" id="city-filter" onchange="renderLeads()">
+                <option value="">Todas as cidades</option>
+              </select>
+              <select style="width:140px;font-size:12px" id="sort-sel" onchange="renderLeads()">
                 <option value="score">Por score</option>
                 <option value="name">Nome A–Z</option>
                 <option value="rating">Avaliação</option>
                 <option value="date">Mais recentes</option>
               </select>
-              <input style="width:180px;font-size:12px" type="text" placeholder="Filtrar..." id="filter-input" oninput="renderLeads()">
+              <input style="width:160px;font-size:12px" type="text" placeholder="Filtrar..." id="filter-input" oninput="renderLeads()">
             </div>
           </div>
           <div id="leads-container"></div>
@@ -514,13 +520,15 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY);
 // ═══════════════════════════════════════════════════════════
 let currentUser = null;
 let currentProfile = null;
-let allLeads = [];
+let allLeads = [];       // histórico completo
+let currentSearchLeads = []; // leads da busca atual
 let searches = [];
 let schedulerActive = false;
 let schedulerTimer = null;
 let currentLead = null;
 let zoneProgress = {};
 let isRunning = false;
+let activeLeadsTab = 'current'; // 'current' | 'history'
 
 // ═══════════════════════════════════════════════════════════
 // ICP + ZONES
@@ -883,8 +891,11 @@ async function runSearch(bizType,location,radius,lat,lng){
     log('ok',`${scored.length} leads qualificados`);
     const sid=await saveSearch(bizType,location,radius,scored.length);
     await saveLeads(scored,sid);
+    currentSearchLeads = scored;
     allLeads=[...scored,...allLeads.filter(l=>!scored.find(s=>s.place_id===l.place_id))];
     allLeads.sort((a,b)=>(b.score||0)-(a.score||0));
+    activeLeadsTab='current';
+    switchLeadsTab('current');
     renderLeads();updateStats();renderHistory();
     document.getElementById('agent-status').textContent='Concluído';
     toast(`${scored.length} leads encontrados!`,'✓');
@@ -949,10 +960,44 @@ async function saveLeads(leads,sid){
 // ═══════════════════════════════════════════════════════════
 // RENDER
 // ═══════════════════════════════════════════════════════════
+function switchLeadsTab(tab){
+  activeLeadsTab = tab;
+  const btnCurrent = document.getElementById('tab-current');
+  const btnHistory = document.getElementById('tab-history');
+  if(btnCurrent && btnHistory){
+    btnCurrent.style.background = tab==='current' ? 'var(--pink)' : '';
+    btnCurrent.style.color      = tab==='current' ? '#fff' : '';
+    btnCurrent.style.borderColor= tab==='current' ? 'var(--pink)' : '';
+    btnHistory.style.background = tab==='history' ? 'var(--pink)' : '';
+    btnHistory.style.color      = tab==='history' ? '#fff' : '';
+    btnHistory.style.borderColor= tab==='history' ? 'var(--pink)' : '';
+  }
+  renderLeads();
+}
+
+function updateCityFilter(){
+  const sel = document.getElementById('city-filter');
+  if(!sel) return;
+  const leads = activeLeadsTab==='current' ? currentSearchLeads : allLeads;
+  const cities = [...new Set(leads.map(l=>{
+    const parts = (l.address||'').split(',');
+    return parts.length>1 ? parts[parts.length-2].trim() : '';
+  }).filter(Boolean))].sort();
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Todas as cidades</option>' + cities.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(current) sel.value = current;
+}
+
 function renderLeads(){
   const q=document.getElementById('filter-input')?.value.toLowerCase()||'';
   const sort=document.getElementById('sort-sel')?.value||'score';
-  let leads=[...allLeads].filter(l=>!q||l.name?.toLowerCase().includes(q)||l.address?.toLowerCase().includes(q));
+  const cityFilter=document.getElementById('city-filter')?.value||'';
+  const source = activeLeadsTab==='current' ? currentSearchLeads : allLeads;
+  let leads=[...source].filter(l=>{
+    const matchQ = !q||l.name?.toLowerCase().includes(q)||l.address?.toLowerCase().includes(q);
+    const matchCity = !cityFilter||l.address?.includes(cityFilter);
+    return matchQ && matchCity;
+  });
   if(sort==='score') leads.sort((a,b)=>(b.score||0)-(a.score||0));
   if(sort==='name')  leads.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   if(sort==='rating')leads.sort((a,b)=>(b.rating||0)-(a.rating||0));
@@ -963,16 +1008,22 @@ function renderLeads(){
     c.innerHTML=`<div class="leads-table"><div class="empty-state"><div style="font-size:32px;opacity:.2">🔍</div><div style="font-size:14px;font-weight:700">Nenhum lead ainda</div><div style="font-size:12px;max-width:280px;line-height:1.6">Ative o agendador ou clique em "Rodar agora".</div></div></div>`;
     return;
   }
-  c.innerHTML=`<div class="leads-table"><div class="th-row"><div>Empresa</div><div>Endereço</div><div>Segmento</div><div>Avaliação</div><div>Score</div><div>Perfil</div></div>${leads.map(l=>{
+  c.innerHTML=`<div class="leads-table"><div class="th-row"><div>Empresa</div><div>Endereço</div><div>Contato</div><div>Avaliação</div><div>Score</div><div>Perfil</div></div>${leads.map(l=>{
     const addr=(l.address||'').split(',').slice(0,2).join(',');
     const score=l.score||0;
     const tc=l.priority==='hot'?'tag-hot':l.priority==='warm'?'tag-warm':'tag-cold';
     const tl=l.priority==='hot'?'HOT':l.priority==='warm'?'WARM':'COLD';
     const ld=encodeURIComponent(JSON.stringify(l));
+    const contacts = [
+      l.phone ? '📞' : '',
+      l.website ? '🌐' : '',
+      l.instagram ? '📸' : '',
+      l.email ? '✉' : '',
+    ].filter(Boolean).join(' ');
     return `<div class="lead-row" onclick='openLead(decodeURIComponent("${ld}"))'>
-      <div><div class="lead-name">${l.name||'–'}</div></div>
-      <div class="lc">${addr}</div>
-      <div class="lc">${l.segment||'–'}</div>
+      <div><div class="lead-name">${l.name||'–'}</div><div style="font-size:10px;color:var(--muted)">${l.segment||'–'}</div></div>
+      <div class="lc" style="font-size:10px">${addr}</div>
+      <div class="lc" style="font-size:13px;letter-spacing:2px">${contacts||'–'}</div>
       <div class="lc">${l.rating?'★ '+l.rating:'–'}</div>
       <div><div style="font-size:11px;font-weight:600">${score}</div><div class="score-bar"><div class="score-fill" style="width:${score}%"></div></div></div>
       <div><span class="tag ${tc}" style="font-size:10px;padding:2px 7px">${tl}</span></div>
@@ -987,6 +1038,7 @@ function updateStats(){
   document.getElementById('s-searches').textContent=searches.length;
   const covered=Object.keys(zoneProgress).filter(k=>zoneProgress[k]>0).length;
   document.getElementById('s-zones').textContent=`${covered}/9`;
+  updateCityFilter();
 }
 
 function renderHistory(){
@@ -1003,7 +1055,16 @@ function openLead(ldStr){
   currentLead=l;
   document.getElementById('m-title').textContent=l.name||'–';
   document.getElementById('m-summary').textContent=l.ai_summary||'–';
-  document.getElementById('m-grid').innerHTML=[['Endereço',l.address||'–'],['Telefone',l.phone||'–'],['Website',l.website?`<a href="${l.website}" target="_blank">${l.website}</a>`:'–'],['Avaliação',l.rating?`★ ${l.rating} (${l.reviews_count||0})`:'–'],['Score',`${l.score||0}/100`],['Segmento',l.segment||'–']].map(([k,v])=>`<div class="di"><label>${k}</label><span>${v}</span></div>`).join('');
+  document.getElementById('m-grid').innerHTML=[
+    ['Endereço',l.address||'–'],
+    ['Telefone',l.phone||'–'],
+    ['Email',l.email||'–'],
+    ['Website',l.website?`<a href="${l.website}" target="_blank">${l.website}</a>`:'–'],
+    ['Instagram',l.instagram?`<a href="${l.instagram}" target="_blank">${l.instagram}</a>`:'–'],
+    ['Avaliação',l.rating?`★ ${l.rating} (${l.reviews_count||0})`:'–'],
+    ['Score',`${l.score||0}/100`],
+    ['Segmento',l.segment||'–']
+  ].map(([k,v])=>`<div class="di"><label>${k}</label><span>${v}</span></div>`).join('');
   openModal('lead-modal');
 }
 
@@ -1019,7 +1080,7 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 // ═══════════════════════════════════════════════════════════
 function exportLeads(){
   if(!allLeads.length){toast('Nenhum lead','⚠');return;}
-  const cols=['name','address','phone','website','rating','reviews_count','score','priority','segment','ai_summary'];
+  const cols=['name','address','phone','email','website','instagram','rating','reviews_count','score','priority','segment','ai_summary'];
   const csv=[cols.join(','),...allLeads.map(l=>cols.map(c=>`"${(l[c]||'').toString().replace(/"/g,'""')}"`).join(','))].join('\n');
   dl('albert-leads.csv',csv,'text/csv');
   toast(`${allLeads.length} leads exportados`,'✓');
@@ -1055,6 +1116,7 @@ function toast(msg,icon='✓'){
 
 // Expoe funcoes globalmente para os onclick do HTML
 window.switchTab       = switchTab;
+window.switchLeadsTab  = switchLeadsTab;
 window.doLogin         = doLogin;
 window.doSignup        = doSignup;
 window.doLogout        = doLogout;
