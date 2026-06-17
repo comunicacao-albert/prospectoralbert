@@ -1417,6 +1417,11 @@ function openLead(ldStr){
 
   // Busca CNPJ sob demanda (não bloqueia abertura do modal)
   if(!live.cnpj && live.name){
+    // Mostra loading nos campos de CNPJ
+    const cnpjEls = document.querySelectorAll('#m-grid .di span');
+    if(cnpjEls[8]) cnpjEls[8].textContent = 'Buscando...';
+    if(cnpjEls[9]) cnpjEls[9].textContent = '...';
+
     document.getElementById('m-grid').querySelectorAll && setTimeout(async()=>{
       const cnpjData = await fetchCNPJ(live.name);
       if(cnpjData && currentLead?.place_id === live.place_id){
