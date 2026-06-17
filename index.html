@@ -1535,7 +1535,7 @@ async function fetchCNPJ(name){
     const r = await fetch(`${SB_URL}/functions/v1/clever-handler`,{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
-      body:JSON.stringify({action:'cnpj',name})
+      body:JSON.stringify({action:'cnpj',name,address:currentLead?.address||''})
     });
     if(r.status===404){
       // Não encontrado — normal para muitos estabelecimentos com nome fantasia
