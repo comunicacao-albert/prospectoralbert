@@ -250,6 +250,8 @@ hr{border:none;border-top:1px solid var(--border)}
   .status-negociando{background:rgba(249,115,22,.1);color:var(--orange);border-color:rgba(249,115,22,.35);font-weight:700}
   .status-fechado{background:rgba(22,163,74,.1);color:var(--green);border-color:rgba(22,163,74,.35);font-weight:700}
   .status-sem_interesse{background:#f0f0f0;color:var(--muted2);border-color:var(--border);opacity:.6}
+  .status-parceiro{background:rgba(16,185,129,.1);color:#059669;border-color:rgba(16,185,129,.35);font-weight:700}
+  .lead-row.status-parceiro{border-left:3px solid #059669}
   /* Row highlight by status */
   .lead-row.status-contatado{border-left:3px solid #2563eb}
   .lead-row.status-negociando{border-left:3px solid var(--orange)}
@@ -409,17 +411,28 @@ hr{border:none;border-top:1px solid var(--border)}
               <button class="btn btn-ghost" id="tab-current" onclick="switchLeadsTab('current')" style="font-size:12px;padding:5px 12px;background:var(--pink);color:#fff;border-color:var(--pink)">Atual</button>
               <button class="btn btn-ghost" id="tab-history" onclick="switchLeadsTab('history')" style="font-size:12px;padding:5px 12px">Histórico</button>
             </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <select style="width:150px;font-size:12px" id="city-filter" onchange="renderLeads()">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              <select style="width:150px;font-size:12px" id="city-filter" onchange="currentPage=1;renderLeads()">
                 <option value="">Todas as cidades</option>
               </select>
-              <select style="width:140px;font-size:12px" id="sort-sel" onchange="renderLeads()">
+              <select style="width:140px;font-size:12px" id="sort-sel" onchange="currentPage=1;renderLeads()">
                 <option value="score">Por score</option>
                 <option value="name">Nome A–Z</option>
                 <option value="rating">Avaliação</option>
                 <option value="date">Mais recentes</option>
               </select>
-              <input style="width:160px;font-size:12px" type="text" placeholder="Filtrar..." id="filter-input" oninput="renderLeads()">
+              <select style="width:130px;font-size:12px" id="status-filter" onchange="currentPage=1;renderLeads()">
+                <option value="">Todos os status</option>
+                <option value="novo">Novo</option>
+                <option value="contatado">Contatado</option>
+                <option value="negociando">Negociando</option>
+                <option value="fechado">Fechado</option>
+                <option value="parceiro">Parceiro</option>
+                <option value="sem_interesse">Sem interesse</option>
+              </select>
+              <input style="width:130px;font-size:12px" type="date" id="date-from" onchange="currentPage=1;renderLeads()" title="Data inicial">
+              <input style="width:130px;font-size:12px" type="date" id="date-to" onchange="currentPage=1;renderLeads()" title="Data final">
+              <input style="width:130px;font-size:12px" type="text" placeholder="Filtrar..." id="filter-input" oninput="currentPage=1;renderLeads()">
             </div>
           </div>
           <div id="leads-container"></div>
@@ -623,6 +636,8 @@ let currentLead = null;
 let zoneProgress = {};
 let isRunning = false;
 let activeLeadsTab = 'current'; // 'current' | 'history'
+let currentPage = 1;
+const PAGE_SIZE = 20;
 
 // ═══════════════════════════════════════════════════════════
 // ICP + ZONES
@@ -1149,6 +1164,14 @@ async function runSearch(bizType,location,radius,lat,lng){
   }
 }
 
+function goToPage(page){
+  const source = activeLeadsTab==='current' ? currentSearchLeads : allLeads;
+  const totalPages = Math.max(1, Math.ceil(source.length / PAGE_SIZE));
+  currentPage = Math.max(1, Math.min(page, totalPages));
+  renderLeads();
+  document.getElementById('leads-container')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 function setAgentStatus(state, text){
   const el = document.getElementById('agent-status');
   if(!el) return;
@@ -1226,6 +1249,7 @@ async function saveLeads(leads,sid){
 // ═══════════════════════════════════════════════════════════
 function switchLeadsTab(tab){
   activeLeadsTab = tab;
+  currentPage = 1;
   updateTabButtons();
   updateCityFilter();
   renderLeads();
@@ -1266,26 +1290,35 @@ function renderLeads(){
   const q=document.getElementById('filter-input')?.value.toLowerCase()||'';
   const sort=document.getElementById('sort-sel')?.value||'score';
   const cityFilter=document.getElementById('city-filter')?.value||'';
-  // current = leads da ultima busca, history = todos do banco
+  const statusFilter=document.getElementById('status-filter')?.value||'';
+  const dateFrom=document.getElementById('date-from')?.value||'';
+  const dateTo=document.getElementById('date-to')?.value||'';
   const source = activeLeadsTab==='current' ? currentSearchLeads : allLeads;
-  console.log('renderLeads tab:', activeLeadsTab, 'source size:', source.length);
   let leads=[...source].filter(l=>{
     const matchQ = !q||l.name?.toLowerCase().includes(q)||l.address?.toLowerCase().includes(q);
     const matchCity = !cityFilter||l.address?.includes(cityFilter);
-    return matchQ && matchCity;
+    const matchStatus = !statusFilter||(l.status||'novo')===statusFilter;
+    const leadDate = l.created_at ? l.created_at.substring(0,10) : '';
+    const matchFrom = !dateFrom||leadDate>=dateFrom;
+    const matchTo   = !dateTo  ||leadDate<=dateTo;
+    return matchQ && matchCity && matchStatus && matchFrom && matchTo;
   });
   if(sort==='score') leads.sort((a,b)=>(b.score||0)-(a.score||0));
   if(sort==='name')  leads.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   if(sort==='rating')leads.sort((a,b)=>(b.rating||0)-(a.rating||0));
   if(sort==='date')  leads.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
   updateTabButtons();
+  const totalFiltered = leads.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
+  if(currentPage > totalPages) currentPage = 1;
+  const paginated = leads.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
   const countEl = document.getElementById('leads-count');
   if(countEl){
-    const total = activeLeadsTab==='current' ? currentSearchLeads.length : allLeads.length;
-    countEl.textContent = leads.length ? `(${leads.length}${leads.length<total?' filtrados':''})` : '';
+    const total = source.length;
+    countEl.textContent = totalFiltered ? `(${totalFiltered}${totalFiltered<total?' filtrados':''})` : '';
   }
   const c=document.getElementById('leads-container');
-  if(!leads.length){
+  if(!totalFiltered){
     const msg = activeLeadsTab==='current'
       ? 'Clique em "Rodar agora" ou use a busca manual para gerar leads.'
       : 'Nenhum lead salvo ainda. Faça uma busca para começar.';
@@ -1293,7 +1326,13 @@ function renderLeads(){
     c.innerHTML=`<div class="leads-table"><div class="empty-state"><div style="font-size:32px;opacity:.2">🔍</div><div style="font-size:14px;font-weight:700">${title}</div><div style="font-size:12px;max-width:280px;line-height:1.6">${msg}</div></div></div>`;
     return;
   }
-  c.innerHTML=`<div class="leads-table"><div class="th-row" style="grid-template-columns:2fr 1.2fr 1fr .8fr .6fr .6fr .7fr"><div>Empresa</div><div>Endereço</div><div>Contato</div><div>Avaliação</div><div>Score</div><div>Perfil</div><div>Status</div></div>${leads.map(l=>{
+  const paginationHtml = totalPages > 1 ? `
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:#fff;border-top:1px solid var(--border)">
+      <button class="btn btn-ghost btn-sm" onclick="goToPage(${currentPage-1})" ${currentPage<=1?'disabled':''}>← Anterior</button>
+      <span style="font-size:12px;color:var(--muted)">Página ${currentPage} de ${totalPages} — ${totalFiltered} leads</span>
+      <button class="btn btn-ghost btn-sm" onclick="goToPage(${currentPage+1})" ${currentPage>=totalPages?'disabled':''}>Próxima →</button>
+    </div>` : '';
+  c.innerHTML=`<div class="leads-table"><div class="th-row" style="grid-template-columns:2fr 1.2fr 1fr .8fr .6fr .6fr .7fr"><div>Empresa</div><div>Endereço</div><div>Contato</div><div>Avaliação</div><div>Score</div><div>Perfil</div><div>Status</div></div>${paginated.map(l=>{
     const addr=(l.address||'').split(',').slice(0,2).join(',');
     const score=l.score||0;
     const tc=l.priority==='hot'?'tag-hot':l.priority==='warm'?'tag-warm':'tag-cold';
@@ -1309,13 +1348,14 @@ function renderLeads(){
     const waBtn = waNumber ? `<span onclick="event.stopPropagation();window.open('https://wa.me/${waNumber}','_blank')" title="Abrir WhatsApp" style="cursor:pointer;font-size:16px;margin-left:4px" aria-label="WhatsApp">💬</span>` : '';
     const st = l.status||'novo';
     const stLabels = {novo:'Novo',contatado:'Contatado',negociando:'Negociando',fechado:'Fechado',sem_interesse:'Sem interesse'};
-    const stIcons  = {novo:'○',contatado:'◉',negociando:'◈',fechado:'✓',sem_interesse:'✕'};
+    const stIcons  = {novo:'○',contatado:'◉',negociando:'◈',fechado:'✓',sem_interesse:'✕',parceiro:'★'};
     const stLabel  = stLabels[st]||'Novo';
     const stIcon   = stIcons[st]||'○';
     return `<div class="lead-row status-${st}" style="grid-template-columns:2fr 1.2fr 1fr .8fr .6fr .6fr .7fr" onclick='openLead(decodeURIComponent("${ld}"))'>
       <div>
         <div class="lead-name">${l.name||'–'}${activeLeadsTab==='current'&&l.is_new===false?'<span style="margin-left:6px;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;background:#f0f0f0;color:var(--muted2)">Já no histórico</span>':''}${l.network_name?`<span style="margin-left:5px;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;background:rgba(124,58,237,.1);color:#7c3aed">${l.network_units}x</span>`:''}</div>
-        <div style="font-size:10px;color:var(--muted)">${l.segment||'–'}${l.cnpj_status==='ATIVA'?'<span style="margin-left:4px;color:var(--green);font-size:9px">● CNPJ ativo</span>':l.cnpj_status?`<span style="margin-left:4px;color:var(--orange);font-size:9px">● ${l.cnpj_status}</span>`:''}</div>
+        <div style="font-size:10px;color:var(--muted)">${l.segment||'–'}${l.cnpj_status==='ATIVA'?'<span style="margin-left:4px;color:var(--green);font-size:9px">● CNPJ ativo</span>':l.cnpj_status?`<span style="margin-left:4px;color:var(--orange);font-size:9px">● ${l.cnpj_status}</span>`:''}
+        ${l.created_at?`<span style="margin-left:4px;color:var(--muted2);font-size:9px">${new Date(l.created_at).toLocaleDateString('pt-BR')}</span>`:''}</div>
       </div>
       <div class="lc" style="font-size:10px">${addr}</div>
       <div class="lc" style="font-size:13px;letter-spacing:2px;display:flex;align-items:center;gap:2px">${contacts||'–'}${waBtn}</div>
@@ -1328,7 +1368,7 @@ function renderLeads(){
         </span>
       </div>
     </div>`;
-  }).join('')}</div>`;
+  }).join('')}${paginationHtml}</div>`;
 }
 
 function updateStats(){
@@ -1350,8 +1390,8 @@ function renderHistory(){
 // ═══════════════════════════════════════════════════════════
 // MODALS
 // ═══════════════════════════════════════════════════════════
-const STATUS_CYCLE = ['novo','contatado','negociando','fechado','sem_interesse'];
-const STATUS_LABELS = {novo:'Novo',contatado:'Contatado',negociando:'Negociando',fechado:'Fechado',sem_interesse:'Sem interesse'};
+const STATUS_CYCLE = ['novo','contatado','negociando','fechado','sem_interesse','parceiro'];
+const STATUS_LABELS = {novo:'Novo',contatado:'Contatado',negociando:'Negociando',fechado:'Fechado',sem_interesse:'Sem interesse',parceiro:'Parceiro'};
 
 async function cycleStatus(placeId, el){
   const lead = allLeads.find(l=>l.place_id===placeId) || currentSearchLeads.find(l=>l.place_id===placeId);
@@ -1627,6 +1667,7 @@ window.saveNotes       = saveNotes;
 window.openWhatsApp    = openWhatsApp;
 window.loadDashboard   = loadDashboard;
 window.setAgentStatus  = setAgentStatus;
+window.goToPage        = goToPage;
 window.fetchCNPJ       = fetchCNPJ;
 window.lookupCNPJ      = lookupCNPJ;
 window.formatCNPJInput = formatCNPJInput;
