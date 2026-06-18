@@ -1356,7 +1356,7 @@ function renderLeads(){
     return `<div class="lead-row status-${st}" style="grid-template-columns:2fr 1.2fr 1fr .8fr .6fr .6fr .7fr" onclick='openLead(decodeURIComponent("${ld}"))'>
       <div>
         <div class="lead-name">${l.name||'–'}${activeLeadsTab==='current'&&l.is_new===false?'<span style="margin-left:6px;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;background:#f0f0f0;color:var(--muted2)">Já no histórico</span>':''}${l.network_name?`<span style="margin-left:5px;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;background:rgba(124,58,237,.1);color:#7c3aed">${l.network_units}x</span>`:''}</div>
-        <div style="font-size:10px;color:var(--muted)">${l.segment||'–'}${l.cnpj_status==='ATIVA'?'<span style="margin-left:4px;color:var(--green);font-size:9px">● CNPJ ativo</span>':l.cnpj_status?`<span style="margin-left:4px;color:var(--orange);font-size:9px">● ${l.cnpj_status}</span>`:''}
+        <div style="font-size:10px;color:var(--muted)">${l.segment||'–'}
         ${l.created_at?`<span style="margin-left:4px;color:var(--muted2);font-size:9px">${new Date(l.created_at).toLocaleDateString('pt-BR')}</span>`:''}</div>
       </div>
       <div class="lc" style="font-size:10px">${addr}</div>
@@ -1437,7 +1437,6 @@ function openLead(ldStr){
   const st = live.status||'novo';
   const sociosList = live.socios?.map((s)=>s.nome).join(', ') || '–';
   const networkBadge = live.network_name ? `<span style="background:rgba(124,58,237,.1);color:#7c3aed;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px">${live.network_units} unidades</span>` : '';
-  const cnpjValue = live.cnpj && live.cnpj !== 'Não encontrado' ? live.cnpj : '';
   document.getElementById('m-grid').innerHTML=[
     ['Endereço',live.address||'–'],
     ['Telefone',live.phone||'–'],
@@ -1447,21 +1446,7 @@ function openLead(ldStr){
     ['Avaliação',live.rating?`★ ${live.rating} (${live.reviews_count||0})`:'–'],
     ['Score',`${live.score||0}/100`],
     ['Segmento',(live.segment||'–')+(networkBadge)],
-  ].map(([k,v])=>`<div class="di"><label>${k}</label><span>${v}</span></div>`).join('') +
-  `<div class="di" style="grid-column:1/-1">
-    <label>CNPJ</label>
-    <div style="display:flex;gap:6px;align-items:center">
-      <input id="cnpj-input" type="text" placeholder="00.000.000/0001-00" value="${cnpjValue}"
-        style="flex:1;font-size:13px;padding:5px 8px;border-radius:6px;border:1.5px solid var(--border);font-family:monospace"
-        onkeydown="if(event.key==='Enter')lookupCNPJ()"
-        onblur="formatCNPJInput(this)"
-        onpaste="setTimeout(()=>formatCNPJInput(this),10)">
-      <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="lookupCNPJ()">🔍 Buscar</button>
-    </div>
-  </div>
-  <div class="di"><label>Status CNPJ</label><span id="cnpj-status-val">${live.cnpj_status||'–'}</span></div>
-  <div class="di"><label>Porte</label><span id="cnpj-porte-val">${live.cnpj_porte||'–'}</span></div>
-  <div class="di" style="grid-column:1/-1"><label>Decisor(es)</label><span id="cnpj-socios-val">${sociosList}</span></div>`;
+  ].map(([k,v])=>`<div class="di"><label>${k}</label><span>${v}</span></div>`).join('');
 
   // Status selector
   document.getElementById('modal-status-row').innerHTML = `
