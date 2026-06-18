@@ -1234,14 +1234,16 @@ async function scoreWithClaude(places,bizType,location,extra,radius=5000,lat=nul
 // PERSISTENCE
 // ═══════════════════════════════════════════════════════════
 async function saveSearch(biz,loc,rad,count){
-  const {data}=await sb.from('searches').insert({biz_type:biz,location:loc,radius:parseInt(rad),results_count:count}).select().single();
+  const {data,error}=await sb.from('searches').insert({biz_type:biz,location:loc,radius:parseInt(rad),results_count:count}).select().single();
+  if(error){ console.warn('saveSearch error:', error.message); return null; }
   searches=[{id:data?.id,biz_type:biz,location:loc,results_count:count,created_at:new Date().toISOString()},...searches].slice(0,20);
   renderHistory();
   return data?.id;
 }
 async function saveLeads(leads,sid){
   const rows=leads.map(l=>({...l,search_id:sid}));
-  await sb.from('leads').upsert(rows,{onConflict:'place_id'});
+  const {error} = await sb.from('leads').upsert(rows,{onConflict:'place_id'});
+  if(error) console.warn('saveLeads error:', error.message);
 }
 
 // ═══════════════════════════════════════════════════════════
