@@ -618,7 +618,7 @@ hr{border:none;border-top:1px solid var(--border)}
 // ═══════════════════════════════════════════════════════════
 const SB_URL = 'https://sdaxjbeuqjwpcwearnbc.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkYXhqYmV1cWp3cGN3ZWFybmJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2ODEzNDEsImV4cCI6MjA5NzI1NzM0MX0.bQyfnbHzN9YuTEYiY-guTggzGz3vQVmX22ViKYjUN3Q';
-const GOOGLE_KEY = 'AIzaSyBrHnnHQpX9DDUGP_0Wq-39ZNALusLZOPg';
+// Google Maps chamado via Edge Function — key não exposta no frontend
 
 const sb = window.supabase.createClient(SB_URL, SB_KEY);
 
@@ -1181,25 +1181,7 @@ function setAgentStatus(state, text){
                    state==='running'? 'var(--orange)' : 'var(--muted)';
 }
 
-// ═══════════════════════════════════════════════════════════
-// GOOGLE MAPS
-// ═══════════════════════════════════════════════════════════
-async function geocode(address){
-  const r=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address+', São Paulo, Brasil')}&key=${GOOGLE_KEY}&language=pt-BR`);
-  const d=await r.json();
-  return d.results?.[0]?.geometry?.location||null;
-}
-async function searchPlaces(query,geo,radius){
-  const r=await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${geo.lat},${geo.lng}&radius=${radius}&keyword=${encodeURIComponent(query)}&key=${GOOGLE_KEY}&language=pt-BR`);
-  const d=await r.json();
-  return d.results||[];
-}
-async function getDetails(placeId){
-  const fields='place_id,name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,types,business_status';
-  const r=await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${GOOGLE_KEY}&language=pt-BR`);
-  const d=await r.json();
-  return d.result||null;
-}
+// Google Maps: todas as chamadas via Edge Function
 
 // ═══════════════════════════════════════════════════════════
 // CLAUDE via Edge Function
