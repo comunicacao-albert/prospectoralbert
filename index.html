@@ -1666,9 +1666,9 @@ async function generateProspectMsg(lead){
   if(!el) return;
   el.innerHTML = '<span style="color:var(--border2);font-style:italic">Gerando mensagem...</span>';
 
-  // Gera via Edge Function
+  // Gera via Edge Function dedicada
   try{
-    const r = await fetch(`${SB_URL}/functions/v1/clever-handler`, {
+    const r = await fetch(`${SB_URL}/functions/v1/msg-handler`, {
       method: 'POST',
       headers: {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
       body: JSON.stringify({
