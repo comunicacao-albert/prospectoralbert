@@ -1460,7 +1460,9 @@ async function cycleStatus(placeId, el){
 
 async function saveNotes(){
   if(!currentLead) return;
-  const notes = document.getElementById('lead-notes').value;
+  const notesInput = document.getElementById('lead-notes');
+  if(!notesInput) return;
+  const notes = notesInput.value;
   currentLead.notes = notes;
   [allLeads, currentSearchLeads].forEach(arr=>{
     const idx = arr.findIndex(l=>l.place_id===currentLead.place_id);
@@ -1560,8 +1562,9 @@ function openLead(ldStr){
       ${STATUS_CYCLE.map(s=>`<span class="status-badge status-${s}" style="${s===st?'outline:2px solid var(--pink);outline-offset:1px':''};cursor:pointer" onclick="setLeadStatus('${s}',this)">${STATUS_LABELS[s]}</span>`).join('')}
     </div>`;
 
-  // Notes
-  document.getElementById('lead-notes').value = live.notes||'';
+  // Notes (campo removido — comentários usados no lugar)
+  const notesEl = document.getElementById('lead-notes');
+  if(notesEl) notesEl.value = live.notes||'';
   // WhatsApp button
   const waBtn2 = document.getElementById('modal-wa-btn');
   if(waBtn2){
