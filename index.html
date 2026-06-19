@@ -585,8 +585,13 @@ hr{border:none;border-top:1px solid var(--border)}
         <div id="modal-status-row"></div>
       </div>
       <div>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;font-weight:700">Notas rápidas</div>
-        <textarea class="notes-box" id="lead-notes" placeholder="Rascunho rápido..."></textarea>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700">💬 Mensagem de prospecção (Instagram)</div>
+          <button class="btn btn-ghost" style="font-size:10px;padding:3px 8px" onclick="copyProspectMsg()" id="copy-msg-btn">📋 Copiar</button>
+        </div>
+        <div id="prospect-msg" style="background:var(--bg-page);border:1.5px solid var(--border);border-radius:8px;padding:12px;font-size:13px;line-height:1.7;color:var(--muted);min-height:80px;white-space:pre-wrap">
+          <span style="color:var(--border2);font-style:italic">Gerando mensagem personalizada...</span>
+        </div>
       </div>
       <div>
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;font-weight:700">Histórico de comentários</div>
@@ -600,7 +605,6 @@ hr{border:none;border-top:1px solid var(--border)}
     </div>
     <div class="mf" style="flex-wrap:wrap;gap:6px">
       <button class="btn btn-primary" onclick="saveLeadFields()">💾 Salvar dados</button>
-      <button class="btn btn-ghost" onclick="saveNotes()">Salvar nota</button>
       <button class="btn btn-whatsapp" id="modal-wa-btn" onclick="openWhatsApp()" style="display:none">💬 WhatsApp</button>
       <button class="btn btn-ghost" onclick="exportSingle()">Exportar</button>
       <button class="btn btn-ghost" onclick="closeModal('lead-modal')">Fechar</button>
@@ -1572,6 +1576,7 @@ function openLead(ldStr){
   }
   openModal('lead-modal');
   loadComments(live.place_id);
+  generateProspectMsg(live);
 
 
 }
@@ -1651,6 +1656,63 @@ async function lookupCNPJ(){
     btn.textContent = origText;
     btn.disabled = false;
   }
+}
+
+async function generateProspectMsg(lead){
+  const el = document.getElementById('prospect-msg');
+  if(!el) return;
+  el.innerHTML = '<span style="color:var(--border2);font-style:italic">Gerando mensagem...</span>';
+
+  // Gera via Edge Function
+  try{
+    const r = await fetch(`${SB_URL}/functions/v1/clever-handler`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
+      body: JSON.stringify({
+        action: 'prospect_msg',
+        name: lead.name,
+        segment: lead.segment,
+        instagram: lead.instagram,
+        address: lead.address,
+        rating: lead.rating,
+        reviews: lead.reviews_count,
+        score: lead.score,
+      })
+    });
+    if(r.ok){
+      const d = await r.json();
+      if(d.message){
+        el.textContent = d.message;
+        return;
+      }
+    }
+  } catch(e){ console.warn('prospect msg error:', e); }
+
+  // Fallback local se edge falhar
+  const seg = lead.segment?.toLowerCase()||'';
+  const isGastro = seg.includes('gastro')||seg.includes('restaurante')||seg.includes('bar')||seg.includes('pizza')||seg.includes('hamburguer');
+  const nome = lead.name.split('|')[0].split('-')[0].trim();
+  const msg = isGastro
+    ? `Olá! Vi o ${nome} aqui no Instagram e fiquei curioso 👋
+
+Trabalho com o albert, um app de cashback que está chegando em ${lead.address?.split(',').slice(-3,-2)[0]?.trim()||'sua cidade'}. A ideia é simples: seus clientes ganham cashback nas compras e voltam mais vezes.
+
+Você teria 10 minutinhos essa semana pra gente conversar? Seria ótimo entender melhor o seu negócio 😊`
+    : `Oi! Encontrei a ${nome} aqui no Instagram e adorei o conceito 👋
+
+Trabalho com o albert, um app de cashback e fidelização que está chegando na região. A proposta é conectar estabelecimentos como o seu com clientes que buscam recomendações e recompensas.
+
+Teria um tempinho essa semana pra trocar uma ideia? Prometo ser rápido 😊`;
+  el.textContent = msg;
+}
+
+function copyProspectMsg(){
+  const el = document.getElementById('prospect-msg');
+  if(!el) return;
+  navigator.clipboard.writeText(el.textContent);
+  const btn = document.getElementById('copy-msg-btn');
+  if(btn){ btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent='📋 Copiar',2000); }
+  toast('Mensagem copiada!','✓');
 }
 
 function openWhatsApp(){
@@ -1865,6 +1927,8 @@ window.lookupCNPJ      = lookupCNPJ;
 window.formatCNPJInput = formatCNPJInput;
 window.addComment      = addComment;
 window.saveLeadFields  = saveLeadFields;
+window.generateProspectMsg = generateProspectMsg;
+window.copyProspectMsg  = copyProspectMsg;
 window.toggleExportMenu = toggleExportMenu;
 window.loadComments    = loadComments;
 window.doLogin         = doLogin;
