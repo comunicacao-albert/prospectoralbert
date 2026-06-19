@@ -273,6 +273,9 @@ hr{border:none;border-top:1px solid var(--border)}
   .lead-row.status-sem_interesse{opacity:.55}
   .notes-box{background:var(--bg-page);border:1.5px solid var(--border);border-radius:7px;padding:10px;font-size:13px;font-family:var(--font);color:var(--text);width:100%;resize:vertical;min-height:80px;transition:border-color .14s}
   .notes-box:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-bg)}
+  .field-edit{width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);color:var(--text);background:#fff;transition:border-color .14s}
+  .field-edit:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 2px var(--pink-bg)}
+  .field-edit:hover{border-color:var(--border2)}
 </style>
 </head>
 <body>
@@ -595,8 +598,9 @@ hr{border:none;border-top:1px solid var(--border)}
         </div>
       </div>
     </div>
-    <div class="mf">
-      <button class="btn btn-primary" onclick="saveNotes()">Salvar nota</button>
+    <div class="mf" style="flex-wrap:wrap;gap:6px">
+      <button class="btn btn-primary" onclick="saveLeadFields()">💾 Salvar dados</button>
+      <button class="btn btn-ghost" onclick="saveNotes()">Salvar nota</button>
       <button class="btn btn-whatsapp" id="modal-wa-btn" onclick="openWhatsApp()" style="display:none">💬 WhatsApp</button>
       <button class="btn btn-ghost" onclick="exportSingle()">Exportar</button>
       <button class="btn btn-ghost" onclick="closeModal('lead-modal')">Fechar</button>
@@ -1463,6 +1467,43 @@ async function saveNotes(){
   toast('Nota salva!','✓');
 }
 
+async function saveLeadFields(){
+  if(!currentLead) return;
+
+  const fields = {
+    phone:     document.getElementById('edit-phone')?.value.trim()    || null,
+    email:     document.getElementById('edit-email')?.value.trim()    || null,
+    website:   document.getElementById('edit-website')?.value.trim()  || null,
+    instagram: document.getElementById('edit-instagram')?.value.trim()|| null,
+    segment:   document.getElementById('edit-segment')?.value.trim()  || null,
+  };
+
+  // Remove campos vazios
+  Object.keys(fields).forEach(k => { if(!fields[k]) fields[k] = null; });
+
+  // Atualiza estado local
+  Object.assign(currentLead, fields);
+  [allLeads, currentSearchLeads].forEach(arr=>{
+    const idx = arr.findIndex(l=>l.place_id===currentLead.place_id);
+    if(idx>=0) Object.assign(arr[idx], fields);
+  });
+
+  // Salva no banco
+  const {error} = await sb.from('leads').update(fields).eq('place_id',currentLead.place_id);
+  if(error){ toast('Erro ao salvar','✕'); console.warn(error); return; }
+
+  // Atualiza WhatsApp button se telefone mudou
+  const waBtn2 = document.getElementById('modal-wa-btn');
+  if(waBtn2 && fields.phone){
+    const num = fields.phone.replace(/[^\d]/g,'').replace(/^0/,'55').replace(/^([^5])/,'55$1');
+    waBtn2.style.display='flex';
+    waBtn2.onclick = () => window.open(`https://wa.me/${num}`,'_blank');
+  }
+
+  renderLeads();
+  toast('Lead atualizado!','✓');
+}
+
 function openLead(ldStr){
   const l=typeof ldStr==='string'?JSON.parse(ldStr):ldStr;
   // Merge with live data (status/notes may have changed)
@@ -1474,16 +1515,40 @@ function openLead(ldStr){
   const st = live.status||'novo';
   const sociosList = live.socios?.map((s)=>s.nome).join(', ') || '–';
   const networkBadge = live.network_name ? `<span style="background:rgba(124,58,237,.1);color:#7c3aed;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-left:6px">${live.network_units} unidades</span>` : '';
-  document.getElementById('m-grid').innerHTML=[
-    ['Endereço',live.address||'–'],
-    ['Telefone',live.phone||'–'],
-    ['Email',live.email||'–'],
-    ['Website',live.website?`<a href="${live.website}" target="_blank">${live.website}</a>`:'–'],
-    ['Instagram',live.instagram?`<a href="${live.instagram}" target="_blank">${live.instagram}</a>`:'–'],
-    ['Avaliação',live.rating?`★ ${live.rating} (${live.reviews_count||0})`:'–'],
-    ['Score',`${live.score||0}/100`],
-    ['Segmento',(live.segment||'–')+(networkBadge)],
-  ].map(([k,v])=>`<div class="di"><label>${k}</label><span>${v}</span></div>`).join('');
+  document.getElementById('m-grid').innerHTML=`
+    <div class="di" style="grid-column:1/-1">
+      <label>Endereço</label>
+      <span>${live.address||'–'}</span>
+    </div>
+    <div class="di">
+      <label>Telefone</label>
+      <input class="field-edit" id="edit-phone" value="${live.phone||''}" placeholder="(12) 99999-0000">
+    </div>
+    <div class="di">
+      <label>Email</label>
+      <input class="field-edit" id="edit-email" value="${live.email||''}" placeholder="contato@email.com">
+    </div>
+    <div class="di">
+      <label>Website</label>
+      <input class="field-edit" id="edit-website" value="${live.website||''}" placeholder="https://...">
+    </div>
+    <div class="di">
+      <label>Instagram</label>
+      <input class="field-edit" id="edit-instagram" value="${live.instagram||''}" placeholder="https://instagram.com/...">
+    </div>
+    <div class="di">
+      <label>Avaliação</label>
+      <span>${live.rating?'★ '+live.rating+' ('+live.reviews_count+')':'–'}</span>
+    </div>
+    <div class="di">
+      <label>Score</label>
+      <span>${live.score||0}/100</span>
+    </div>
+    <div class="di">
+      <label>Segmento</label>
+      <input class="field-edit" id="edit-segment" value="${live.segment||''}" placeholder="Gastronomia, Pet, Moda...">
+    </div>
+  `;
 
   // Status selector
   document.getElementById('modal-status-row').innerHTML = `
@@ -1799,6 +1864,7 @@ window.fetchCNPJ       = fetchCNPJ;
 window.lookupCNPJ      = lookupCNPJ;
 window.formatCNPJInput = formatCNPJInput;
 window.addComment      = addComment;
+window.saveLeadFields  = saveLeadFields;
 window.toggleExportMenu = toggleExportMenu;
 window.loadComments    = loadComments;
 window.doLogin         = doLogin;
