@@ -1612,8 +1612,7 @@ async function loadComments(placeId){
           <span class="comment-author">💬 ${c.user_name}</span>
           <span class="comment-date">${new Date(c.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
         </div>
-        <div class="comment-text">${c.content.replace(/
-/g,'<br>')}</div>
+        <div class="comment-text">${c.content.replace(/\n/g,'<br>')}</div>
       </div>`).join('');
     feed.scrollTop = feed.scrollHeight;
   }catch(e){ console.warn('loadComments error:',e); }
