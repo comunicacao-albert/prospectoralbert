@@ -380,16 +380,15 @@ hr{border:none;border-top:1px solid var(--border)}
       <aside class="sidebar">
         <div>
           <div class="sb-title">Agendador automático</div>
-          <div class="scheduler-card">
-            <div class="sched-row">
-              <div class="sched-status">
-                <div class="sched-dot" id="sched-dot"></div>
-                <span id="sched-label" style="color:var(--muted)">Inativo</span>
-              </div>
-              <button class="btn btn-primary" style="padding:5px 10px;font-size:11px" id="sched-btn" onclick="toggleScheduler()">Ativar</button>
+          <div class="scheduler-card" style="background:var(--green-bg);border-color:rgba(22,163,74,.25)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0"></div>
+              <span style="font-size:12px;font-weight:700;color:var(--green)">Rodando automaticamente</span>
             </div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:8px" id="sched-next">–</div>
-            <div class="progress-bar"><div class="progress-fill" id="sched-progress" style="width:0%"></div></div>
+            <div style="font-size:11px;color:var(--green);opacity:.8">Todo dia às 7h — sem precisar abrir o app</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px solid rgba(22,163,74,.15)">
+              Próxima execução: <strong id="next-run-time">carregando...</strong>
+            </div>
           </div>
         </div>
         <div>
@@ -759,6 +758,18 @@ function showApp(){
 
   // Pequena confirmacao no console
   console.log('Login OK — role:', currentProfile?.role);
+  // Calcula próxima execução do cron (7h Brasília = 10h UTC)
+  const el = document.getElementById('next-run-time');
+  if(el){
+    const now = new Date();
+    const next = new Date();
+    next.setUTCHours(10, 0, 0, 0);
+    if(now >= next) next.setDate(next.getDate() + 1);
+    const diff = next - now;
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    el.textContent = `em ${h}h ${m}min (${next.toLocaleDateString('pt-BR', {weekday:'short', hour:'2-digit', minute:'2-digit'})})`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
